@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+from ipaddress import ip_address
 from datetime import datetime, timedelta, timezone as datetime_timezone
 from math import ceil
 
@@ -18,11 +19,23 @@ class PublicSubmissionRateLimited(Exception):
 
 def get_client_ip(request):
     remote_address = request.META.get("REMOTE_ADDR", "unknown")
-    if remote_address not in settings.TRUSTED_PROXY_IPS:
-        return remote_address
+    try:
+        normalized_remote = str(ip_address(remote_address))
+    except ValueError:
+        return "unknown"
+    if normalized_remote not in settings.TRUSTED_PROXY_IPS:
+        return normalized_remote
     forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    client_address = forwarded_for.split(",", 1)[0].strip()
-    return client_address or remote_address
+    address_chain = [part.strip() for part in forwarded_for.split(",") if part.strip()]
+    address_chain.append(normalized_remote)
+    for candidate in reversed(address_chain):
+        try:
+            normalized_candidate = str(ip_address(candidate))
+        except ValueError:
+            continue
+        if normalized_candidate not in settings.TRUSTED_PROXY_IPS:
+            return normalized_candidate
+    return normalized_remote
 
 
 def _hash_ip(client_ip):

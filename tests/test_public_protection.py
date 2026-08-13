@@ -119,6 +119,41 @@ def test_rate_limit_uses_forwarded_ip_only_from_a_trusted_proxy(client, monkeypa
 
 
 @pytest.mark.django_db
+@override_settings(
+    TRUSTED_PROXY_IPS={"10.0.0.10"},
+    PUBLIC_SUBMISSION_LIMIT=1,
+    PUBLIC_SUBMISSION_WINDOW_SECONDS=3600,
+)
+def test_rate_limit_ignores_a_spoofed_hop_before_the_ip_appended_by_proxy(
+    client, monkeypatch
+):
+    monkeypatch.setattr(
+        "support_requests.tasks.analyze_support_request.delay_on_commit", lambda request_id: None
+    )
+    url = reverse("support_requests:api-create")
+    request_options = {
+        "content_type": "application/json",
+        "REMOTE_ADDR": "10.0.0.10",
+    }
+
+    first = client.post(
+        url,
+        VALID_REQUEST,
+        HTTP_X_FORWARDED_FOR="198.51.100.1, 203.0.113.20",
+        **request_options,
+    )
+    spoofed_again = client.post(
+        url,
+        VALID_REQUEST,
+        HTTP_X_FORWARDED_FOR="198.51.100.2, 203.0.113.20",
+        **request_options,
+    )
+
+    assert first.status_code == 201
+    assert spoofed_again.status_code == 429
+
+
+@pytest.mark.django_db
 def test_confirmation_never_exposes_private_data_and_protocol_is_not_queryable(client, monkeypatch):
     monkeypatch.setattr(
         "support_requests.tasks.analyze_support_request.delay_on_commit", lambda request_id: None
