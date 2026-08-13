@@ -7,7 +7,7 @@ services:
     name: saas-desk-ai-web
     plan: free
     runtime: docker
-    dockerCommand: /bin/sh -c 'python manage.py migrate && python manage.py bootstrap_demo && exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT'
+    dockerCommand: python -m config.render_start
     healthCheckPath: /health/
     envVars:
       - key: DATABASE_URL

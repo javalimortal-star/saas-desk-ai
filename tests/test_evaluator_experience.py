@@ -165,11 +165,39 @@ def test_render_blueprint_uses_free_eager_demo_and_keeps_api_key_secret():
     assert "type: worker" not in blueprint
     assert "type: keyvalue" not in blueprint
     assert "fromDatabase:" in blueprint
-    assert (
-        "dockerCommand: /bin/sh -c 'python manage.py migrate && python manage.py bootstrap_demo "
-        "&& exec gunicorn" in blueprint
-    )
+    assert "dockerCommand: python -m config.render_start" in blueprint
     assert 'CELERY_TASK_ALWAYS_EAGER\n        value: "true"' in blueprint
     assert "OPENROUTER_API_KEY\n        sync: false" in blueprint
     assert "redis:" in compose
     assert "worker:" in compose
+
+
+def test_render_entrypoint_prepares_database_then_starts_gunicorn(monkeypatch):
+    from config import render_start
+
+    calls = []
+    monkeypatch.setattr(render_start.django, "setup", lambda: calls.append(("setup",)))
+    monkeypatch.setattr(
+        render_start,
+        "call_command",
+        lambda command, **options: calls.append((command, options)),
+    )
+    monkeypatch.setattr(
+        render_start.os,
+        "execvp",
+        lambda executable, arguments: calls.append(("execvp", executable, arguments)),
+    )
+    monkeypatch.setenv("PORT", "10000")
+
+    render_start.main()
+
+    assert calls == [
+        ("setup",),
+        ("migrate", {"interactive": False}),
+        ("bootstrap_demo", {}),
+        (
+            "execvp",
+            "gunicorn",
+            ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:10000"],
+        ),
+    ]
