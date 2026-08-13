@@ -15,6 +15,7 @@ from support_requests.models import (
     SupportRequest,
 )
 from support_requests.review import InvalidResolutionTransition, resolve_support_request
+from support_requests.public_protection import PublicSubmissionRateLimited
 from support_requests.submission import submit_support_request
 
 
@@ -31,13 +32,27 @@ class PublicSupportRequestSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        return submit_support_request(**validated_data)
+        request = self.context["request"]
+        return submit_support_request(
+            client_ip=request.META.get("REMOTE_ADDR", "unknown"),
+            **validated_data,
+        )
 
 
 class PublicSupportRequestCreateView(generics.CreateAPIView):
     authentication_classes = []
     permission_classes = []
     serializer_class = PublicSupportRequestSerializer
+
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except PublicSubmissionRateLimited as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=429,
+                headers={"Retry-After": str(exc.retry_after_seconds)},
+            )
 
 
 class IsSupportRequestAnalyst(permissions.BasePermission):

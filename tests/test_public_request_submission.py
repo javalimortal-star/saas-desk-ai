@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 from django.urls import reverse
 
@@ -34,19 +32,7 @@ def test_requester_can_submit_a_request_and_receive_only_a_protocol(client):
     ):
         assert private_value not in content
 
-    another_request = SupportRequest.objects.create(
-        requester_name="Carlos Souza",
-        requester_email="carlos@example.com",
-        subject="Outro assunto privado",
-        message="Outro conteúdo privado.",
-    )
-    another_content = client.get(
-        reverse("support_requests:submitted", kwargs={"protocol": another_request.protocol})
-    ).content.decode()
-
-    assert content.replace(str(support_request.protocol), "<protocol>") == another_content.replace(
-        str(another_request.protocol), "<protocol>"
-    )
+    assert response.redirect_chain[-1][0] == reverse("support_requests:submitted")
 
 
 @pytest.mark.django_db
@@ -69,7 +55,7 @@ def test_requester_sees_clear_errors_for_invalid_form_data(client):
 
 
 @pytest.mark.django_db
-def test_confirmation_returns_not_found_for_an_unknown_protocol(client):
-    response = client.get(reverse("support_requests:submitted", kwargs={"protocol": uuid.uuid4()}))
+def test_confirmation_without_a_recent_submission_returns_not_found(client):
+    response = client.get(reverse("support_requests:submitted"))
 
     assert response.status_code == 404

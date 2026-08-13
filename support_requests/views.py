@@ -3,7 +3,7 @@ from uuid import uuid4
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views import View
@@ -19,6 +19,7 @@ from support_requests.analysis_retry import (
 from support_requests.forms import AnalysisRetryForm, HumanReviewForm, SupportRequestForm
 from support_requests.models import AnalysisAttempt, SupportRequest
 from support_requests.review import InvalidResolutionTransition, resolve_support_request
+from support_requests.public_protection import PublicSubmissionRateLimited
 from support_requests.submission import submit_support_request
 
 
@@ -27,10 +28,21 @@ class SupportRequestCreateView(CreateView):
     template_name = "support_requests/submit.html"
 
     def get_success_url(self):
-        return reverse("support_requests:submitted", kwargs={"protocol": self.object.protocol})
+        return reverse("support_requests:submitted")
 
     def form_valid(self, form):
-        self.object = submit_support_request(**form.cleaned_data)
+        try:
+            self.object = submit_support_request(
+                client_ip=self.request.META.get("REMOTE_ADDR", "unknown"),
+                **form.cleaned_data,
+            )
+        except PublicSubmissionRateLimited as exc:
+            form.add_error(None, str(exc))
+            response = self.form_invalid(form)
+            response.status_code = 429
+            response.headers["Retry-After"] = str(exc.retry_after_seconds)
+            return response
+        self.request.session["submitted_protocol"] = str(self.object.protocol)
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -39,11 +51,10 @@ class SupportRequestSubmittedView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        support_request = get_object_or_404(
-            SupportRequest.objects.only("protocol"),
-            protocol=kwargs["protocol"],
-        )
-        context["protocol"] = support_request.protocol
+        protocol = self.request.session.pop("submitted_protocol", None)
+        if not protocol:
+            raise Http404
+        context["protocol"] = protocol
         return context
 
 

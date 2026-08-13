@@ -152,3 +152,17 @@ class AnalysisRun(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+
+
+class PublicSubmissionBucket(models.Model):
+    ip_hash = models.CharField(max_length=64)
+    window_started_at = models.DateTimeField()
+    submission_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("ip_hash", "window_started_at"),
+                name="unique_public_submission_bucket",
+            )
+        ]

@@ -22,7 +22,7 @@ from support_requests.views import (
 app_name = "support_requests"
 urlpatterns = [
     path("", SupportRequestCreateView.as_view(), name="submit"),
-    path("submitted/<uuid:protocol>/", SupportRequestSubmittedView.as_view(), name="submitted"),
+    path("submitted/", SupportRequestSubmittedView.as_view(), name="submitted"),
     path(
         "api/v1/requests/",
         PublicSupportRequestCreateView.as_view(),
