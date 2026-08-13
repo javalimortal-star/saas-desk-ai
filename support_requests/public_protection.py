@@ -23,7 +23,7 @@ def get_client_ip(request):
         normalized_remote = str(ip_address(remote_address))
     except ValueError:
         return "unknown"
-    if normalized_remote not in settings.TRUSTED_PROXY_IPS:
+    if normalized_remote not in settings.TRUSTED_PROXY_IPS and not settings.TRUST_RENDER_PROXY:
         return normalized_remote
     forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
     address_chain = [part.strip() for part in forwarded_for.split(",") if part.strip()]
@@ -33,7 +33,8 @@ def get_client_ip(request):
             normalized_candidate = str(ip_address(candidate))
         except ValueError:
             continue
-        if normalized_candidate not in settings.TRUSTED_PROXY_IPS:
+        is_platform_edge = settings.TRUST_RENDER_PROXY and normalized_candidate == normalized_remote
+        if normalized_candidate not in settings.TRUSTED_PROXY_IPS and not is_platform_edge:
             return normalized_candidate
     return normalized_remote
 

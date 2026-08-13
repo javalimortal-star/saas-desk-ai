@@ -4,6 +4,8 @@
 <body>
   <main>
     <h1>Entrar como Analista</h1>
+    <p>Credenciais da demonstração: <code>demo-analyst</code> / <code>{{ demo_analyst_password }}</code>.</p>
+    <p>Esta conta possui somente a permissão de Analista; não é administradora.</p>
     {% if form.errors %}<p>Usuário ou senha inválidos.</p>{% endif %}
     <form method="post">
       {% csrf_token %}

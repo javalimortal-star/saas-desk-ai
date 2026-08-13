@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
@@ -67,6 +68,11 @@ class SupportRequestSubmittedView(TemplateView):
 class AnalystLoginView(LoginView):
     template_name = "support_requests/analyst_login.html"
     redirect_authenticated_user = True
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["demo_analyst_password"] = settings.DEMO_ANALYST_PASSWORD
+        return context
 
 
 class AnalystLogoutView(LogoutView):

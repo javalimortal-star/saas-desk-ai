@@ -15,6 +15,11 @@
       {{ form.as_p }}
       <button type="submit">Enviar solicitação</button>
     </form>
+    <nav aria-label="Links da demonstração">
+      <a href="{% url 'support_requests:analyst-login' %}">Entrar como Analista</a>
+      <a href="{% url 'api-docs' %}">Documentação da API</a>
+      <a href="https://github.com/javalimortal-star/saas-desk-ai">Código-fonte</a>
+    </nav>
   </main>
 </body>
 </html>

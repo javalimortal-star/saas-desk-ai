@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -112,3 +114,36 @@ def test_fake_provider_is_explicit_and_openrouter_never_falls_back_to_it(setting
     settings.ANALYSIS_PROVIDER = "automatic"
     with pytest.raises(ImproperlyConfigured):
         get_analysis_provider()
+
+
+@pytest.mark.django_db
+def test_health_check_verifies_the_database(client):
+    response = client.get(reverse("health-check"))
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+@pytest.mark.django_db
+def test_public_pages_expose_evaluator_links_and_limited_demo_credentials(client, settings):
+    settings.DEMO_ANALYST_PASSWORD = "public-evaluator-password"
+    public_page = client.get(reverse("support_requests:submit"))
+    login_page = client.get(reverse("support_requests:analyst-login"))
+
+    assert b"api/docs" in public_page.content
+    assert b"javalimortal-star/saas-desk-ai" in public_page.content
+    assert b"demo-analyst" in login_page.content
+    assert b"public-evaluator-password" in login_page.content
+    assert "não é administradora" in login_page.content.decode()
+
+
+def test_render_blueprint_has_the_full_stack_and_keeps_api_key_secret():
+    blueprint = (Path(__file__).parents[1] / "render.yaml").read_text(encoding="utf-8")
+
+    assert "type: web" in blueprint
+    assert "type: worker" in blueprint
+    assert "type: keyvalue" in blueprint
+    assert "fromDatabase:" in blueprint
+    assert "preDeployCommand: python manage.py migrate" in blueprint
+    assert "initialDeployHook: python manage.py seed_demo" in blueprint
+    assert "OPENROUTER_API_KEY\n        sync: false" in blueprint
