@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import CreateView, DetailView, ListView, TemplateView
 
+from support_requests.access import ANALYST_PERMISSION, is_support_request_analyst
 from support_requests.forms import SupportRequestForm
 from support_requests.models import SupportRequest
 
@@ -40,10 +41,10 @@ class AnalystLogoutView(LogoutView):
 
 
 class AnalystPermissionRequiredMixin(LoginRequiredMixin, PermissionRequiredMixin):
-    permission_required = "support_requests.view_supportrequest"
+    permission_required = ANALYST_PERMISSION
 
     def handle_no_permission(self):
-        if self.request.user.is_authenticated:
+        if self.request.user.is_authenticated and not is_support_request_analyst(self.request.user):
             raise PermissionDenied
         return super().handle_no_permission()
 

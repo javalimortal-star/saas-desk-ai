@@ -1,5 +1,6 @@
 from rest_framework import generics, permissions, serializers
 
+from support_requests.access import is_support_request_analyst
 from support_requests.models import SupportRequest
 
 
@@ -24,9 +25,7 @@ class PublicSupportRequestCreateView(generics.CreateAPIView):
 
 class IsSupportRequestAnalyst(permissions.BasePermission):
     def has_permission(self, request, view):
-        return request.user.is_authenticated and request.user.has_perm(
-            "support_requests.view_supportrequest"
-        )
+        return is_support_request_analyst(request.user)
 
 
 class AnalystSupportRequestSerializer(serializers.ModelSerializer):
