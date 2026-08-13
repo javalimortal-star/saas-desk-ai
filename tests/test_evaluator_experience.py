@@ -165,7 +165,10 @@ def test_render_blueprint_uses_free_eager_demo_and_keeps_api_key_secret():
     assert "type: worker" not in blueprint
     assert "type: keyvalue" not in blueprint
     assert "fromDatabase:" in blueprint
-    assert "python manage.py migrate && python manage.py bootstrap_demo && gunicorn" in blueprint
+    assert (
+        "dockerCommand: /bin/sh -c 'python manage.py migrate && python manage.py bootstrap_demo "
+        "&& exec gunicorn" in blueprint
+    )
     assert 'CELERY_TASK_ALWAYS_EAGER\n        value: "true"' in blueprint
     assert "OPENROUTER_API_KEY\n        sync: false" in blueprint
     assert "redis:" in compose
