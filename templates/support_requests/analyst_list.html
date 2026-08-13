@@ -8,6 +8,20 @@
       {% csrf_token %}
       <button type="submit">Sair</button>
     </form>
+    <section>
+      <h2>Totais por Etapa da Solicitação</h2>
+      <ul>
+        {% for label, total in stage_summary %}<li>{{ label }}: {{ total }}</li>{% endfor %}
+      </ul>
+      <h2>Distribuição por Categoria</h2>
+      {% if category_totals %}<ul>{% for value, total in category_totals.items %}<li>{{ value }}: {{ total }}</li>{% endfor %}</ul>{% else %}<p>Nenhuma classificação disponível.</p>{% endif %}
+      <h2>Distribuição por Prioridade</h2>
+      {% if priority_totals %}<ul>{% for value, total in priority_totals.items %}<li>{{ value }}: {{ total }}</li>{% endfor %}</ul>{% else %}<p>Nenhuma classificação disponível.</p>{% endif %}
+    </section>
+    <form method="get">
+      {{ filter_form.as_p }}
+      <button type="submit">Filtrar</button>
+    </form>
     <ul>
       {% for support_request in support_requests %}
         <li>
@@ -15,9 +29,11 @@
             {{ support_request.subject }}
           </a>
           — {{ support_request.get_stage_display }}
+          — {{ support_request.effective_category_display }}
+          — {{ support_request.effective_priority_display }}
         </li>
       {% empty %}
-        <li>Nenhuma solicitação recebida.</li>
+        <li>{% if request.GET %}Nenhuma Solicitação corresponde aos filtros.{% else %}Nenhuma Solicitação recebida.{% endif %}</li>
       {% endfor %}
     </ul>
   </main>

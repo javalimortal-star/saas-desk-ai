@@ -17,6 +17,12 @@ from support_requests.analysis_retry import (
     request_analysis_retry,
 )
 from support_requests.forms import AnalysisRetryForm, HumanReviewForm, SupportRequestForm
+from support_requests.dashboard import (
+    DashboardFilterForm,
+    dashboard_totals,
+    effective_support_requests,
+    filter_support_requests,
+)
 from support_requests.models import AnalysisAttempt, SupportRequest
 from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.public_protection import PublicSubmissionRateLimited, get_client_ip
@@ -80,7 +86,33 @@ class AnalystSupportRequestListView(AnalystPermissionRequiredMixin, ListView):
     model = SupportRequest
     template_name = "support_requests/analyst_list.html"
     context_object_name = "support_requests"
-    ordering = "-created_at"
+    def get_queryset(self):
+        self.filter_form = DashboardFilterForm(self.request.GET)
+        queryset = effective_support_requests().order_by("-created_at")
+        if self.filter_form.is_valid():
+            return filter_support_requests(queryset, self.filter_form.cleaned_data)
+        return queryset.none()
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        all_requests = effective_support_requests()
+        stage_totals, category_totals, priority_totals = dashboard_totals(all_requests)
+        context.update(
+            filter_form=self.filter_form,
+            stage_totals=stage_totals,
+            stage_summary=[
+                (label, stage_totals[value]) for value, label in SupportRequest.Stage.choices
+            ],
+            category_totals=category_totals,
+            priority_totals=priority_totals,
+        )
+        return context
+
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        if not self.filter_form.is_valid():
+            response.status_code = 400
+        return response
 
 
 class AnalystSupportRequestDetailView(AnalystPermissionRequiredMixin, DetailView):

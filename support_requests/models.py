@@ -60,6 +60,14 @@ class SupportRequest(models.Model):
             )
         ]
 
+    @property
+    def effective_category_display(self):
+        return dict(self.Category.choices).get(getattr(self, "effective_category", None), "—")
+
+    @property
+    def effective_priority_display(self):
+        return dict(self.Priority.choices).get(getattr(self, "effective_priority", None), "—")
+
 
 class AnalysisAttemptManager(models.Manager):
     def record_for(self, support_request, assisted_analysis, duration_ms=0):

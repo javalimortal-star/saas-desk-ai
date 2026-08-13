@@ -3,6 +3,11 @@ from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
 
 from support_requests.access import is_support_request_analyst
+from support_requests.dashboard import (
+    DashboardFilterForm,
+    effective_support_requests,
+    filter_support_requests,
+)
 from support_requests.analysis_retry import (
     AnalysisRetryRateLimited,
     IdempotencyKeyConflict,
@@ -103,8 +108,15 @@ class AnalystSupportRequestDetailSerializer(AnalystSupportRequestSerializer):
 
 class AnalystSupportRequestListView(generics.ListAPIView):
     permission_classes = [IsSupportRequestAnalyst]
-    queryset = SupportRequest.objects.order_by("-created_at")
     serializer_class = AnalystSupportRequestSerializer
+
+    def get_queryset(self):
+        form = DashboardFilterForm(self.request.query_params)
+        if not form.is_valid():
+            raise serializers.ValidationError(form.errors.get_json_data())
+        return filter_support_requests(
+            effective_support_requests().order_by("-created_at"), form.cleaned_data
+        )
 
 
 class AnalystSupportRequestDetailView(generics.RetrieveAPIView):
