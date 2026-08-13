@@ -28,4 +28,4 @@ Registre data, commit, URL e resultado de cada item antes de fechar a issue #11.
 
 ## Gravação segura
 
-Grave 30–45 segundos: formulário fictício → Protocolo → login → fila → detalhe → Análise assistida → edição humana → Resolução → Swagger. Use apenas os dados do seed, mantenha DevTools e painéis de segredo fechados e não mostre a chave ou cookies. Exporte para `docs/demo.gif` ou publique um vídeo não listado e inclua o link no README.
+O arquivo `docs/demo.gif` registra o formulário fictício → Protocolo → login → fila → Análise assistida → edição humana → Resolução → Swagger. Ele usa somente dados fictícios e não mostra chave, cookie, DevTools ou painel de segredos. As imagens-fonte sanitizadas estão versionadas em `docs/demo-frames/`; após instalar as dependências de desenvolvimento, remonte o GIF com `python scripts/build_demo_gif.py`.

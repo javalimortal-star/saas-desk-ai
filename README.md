@@ -6,6 +6,8 @@ Uma central de atendimento de portfólio em que IA recomenda e uma pessoa decide
 
 Links: [código-fonte](https://github.com/javalimortal-star/saas-desk-ai) · demonstração publicada (adicionar após o deploy) · Swagger publicado (adicionar após o deploy)
 
+![Demonstração do fluxo crítico](docs/demo.gif)
+
 ## Arquitetura
 
 - Django + Django REST Framework: interface e API.
@@ -32,6 +34,8 @@ docker compose exec web python manage.py seed_demo
 - OpenAPI: <http://localhost:8000/api/schema/>
 
 Credenciais locais padrão: `demo-analyst` / `demo-password`. O Analista recebe somente a permissão necessária e não é `staff` nem superusuário. Altere `DEMO_ANALYST_PASSWORD` fora de uma avaliação local.
+
+Sem Redis local, use `CELERY_TASK_ALWAYS_EAGER=true` apenas para executar a tarefa no próprio processo durante uma demonstração de desenvolvimento. Produção e Docker Compose mantêm o worker separado.
 
 ## Configuração de IA
 
@@ -74,6 +78,8 @@ Para publicar, consulte [a decisão e o checklist do Render](docs/deployment.md)
 SaaS Desk AI is a portfolio support desk where AI recommends and a human decides. A requester submits fictional data, Celery runs assisted analysis, and an analyst reviews category, priority, and suggested response before resolution.
 
 Links: [source code](https://github.com/javalimortal-star/saas-desk-ai) · live demo (add after deployment) · live Swagger (add after deployment)
+
+![Critical-path demo](docs/demo.gif)
 
 ### Architecture and local run
 
