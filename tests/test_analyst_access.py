@@ -112,6 +112,7 @@ def test_analyst_can_list_and_detail_requests_through_the_api(client, analyst, s
     assert detail_response.status_code == 200
     detail_payload = detail_response.json()
     detail_payload.pop("created_at")
+    assert detail_payload.pop("analysis_attempts") == []
     assert detail_payload == list_payload[0]
 
 

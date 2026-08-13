@@ -120,3 +120,32 @@ class AnalysisAttempt(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = AnalysisAttemptManager()
+
+    class Meta:
+        ordering = ("created_at", "pk")
+
+
+class AnalysisRun(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pendente"
+        PROCESSING = "processing", "Em processamento"
+        COMPLETED = "completed", "Concluído"
+        SKIPPED = "skipped", "Ignorado"
+
+    support_request = models.ForeignKey(
+        SupportRequest,
+        on_delete=models.CASCADE,
+        related_name="analysis_runs",
+    )
+    idempotency_key = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    status = models.CharField(max_length=16, choices=Status, default=Status.PENDING)
+    attempt = models.OneToOneField(
+        AnalysisAttempt,
+        on_delete=models.PROTECT,
+        related_name="analysis_run",
+        null=True,
+        blank=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)

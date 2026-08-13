@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
@@ -8,7 +10,13 @@ from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, TemplateView
 
 from support_requests.access import ANALYST_PERMISSION, is_support_request_analyst
-from support_requests.forms import HumanReviewForm, SupportRequestForm
+from support_requests.analysis_retry import (
+    AnalysisRetryRateLimited,
+    IdempotencyKeyConflict,
+    InvalidAnalysisRetryTransition,
+    request_analysis_retry,
+)
+from support_requests.forms import AnalysisRetryForm, HumanReviewForm, SupportRequestForm
 from support_requests.models import AnalysisAttempt, SupportRequest
 from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.submission import submit_support_request
@@ -84,6 +92,9 @@ class AnalystSupportRequestDetailView(AnalystPermissionRequiredMixin, DetailView
                 "approved_response": latest_success.suggested_response,
             }
         context["review_form"] = HumanReviewForm(initial=initial)
+        context["analysis_retry_form"] = AnalysisRetryForm(
+            initial={"idempotency_key": uuid4()}
+        )
         return context
 
 
@@ -110,3 +121,35 @@ class AnalystSupportRequestApproveView(AnalystPermissionRequiredMixin, View):
                 status=409,
             )
         return redirect("support_requests:analyst-detail", pk=pk)
+
+
+class AnalystSupportRequestRetryAnalysisView(AnalystPermissionRequiredMixin, View):
+    def post(self, request, pk):
+        support_request = get_object_or_404(SupportRequest, pk=pk)
+        form = AnalysisRetryForm(request.POST)
+        if not form.is_valid():
+            return self._render_detail(request, support_request, form, 400)
+        try:
+            request_analysis_retry(support_request_id=pk, **form.cleaned_data)
+        except (InvalidAnalysisRetryTransition, IdempotencyKeyConflict) as exc:
+            form.add_error(None, str(exc))
+            return self._render_detail(request, support_request, form, 409)
+        except AnalysisRetryRateLimited as exc:
+            form.add_error(None, str(exc))
+            response = self._render_detail(request, support_request, form, 429)
+            response.headers["Retry-After"] = str(exc.retry_after_seconds)
+            return response
+        return redirect("support_requests:analyst-detail", pk=pk)
+
+    @staticmethod
+    def _render_detail(request, support_request, retry_form, status):
+        return render(
+            request,
+            "support_requests/analyst_detail.html",
+            {
+                "support_request": support_request,
+                "review_form": HumanReviewForm(),
+                "analysis_retry_form": retry_form,
+            },
+            status=status,
+        )

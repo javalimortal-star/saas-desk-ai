@@ -24,3 +24,7 @@ class HumanReviewForm(forms.Form):
         strip=True,
         widget=forms.Textarea,
     )
+
+
+class AnalysisRetryForm(forms.Form):
+    idempotency_key = forms.UUIDField(widget=forms.HiddenInput)

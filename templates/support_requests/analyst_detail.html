@@ -30,6 +30,16 @@
         <p>A análise ainda não foi concluída.</p>
       {% endfor %}
     </section>
+    {% if support_request.stage == "awaiting_review" or support_request.stage == "analysis_failed" %}
+      <section>
+        <h2>Nova Tentativa de análise</h2>
+        <form method="post" action="{% url 'support_requests:analyst-retry-analysis' support_request.pk %}">
+          {% csrf_token %}
+          {{ analysis_retry_form.as_p }}
+          <button type="submit">Solicitar nova análise</button>
+        </form>
+      </section>
+    {% endif %}
     <section>
       <h2>Revisão humana</h2>
       {% if support_request.stage == "resolved" %}

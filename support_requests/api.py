@@ -1,8 +1,19 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
 
 from support_requests.access import is_support_request_analyst
-from support_requests.models import SUGGESTED_RESPONSE_MAX_LENGTH, SupportRequest
+from support_requests.analysis_retry import (
+    AnalysisRetryRateLimited,
+    IdempotencyKeyConflict,
+    InvalidAnalysisRetryTransition,
+    request_analysis_retry,
+)
+from support_requests.models import (
+    SUGGESTED_RESPONSE_MAX_LENGTH,
+    AnalysisAttempt,
+    SupportRequest,
+)
 from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.submission import submit_support_request
 
@@ -49,6 +60,32 @@ class AnalystSupportRequestSerializer(serializers.ModelSerializer):
         )
 
 
+class AnalysisAttemptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnalysisAttempt
+        fields = (
+            "id",
+            "outcome",
+            "summary",
+            "recommended_category",
+            "recommended_priority",
+            "suggested_response",
+            "provider_model",
+            "duration_ms",
+            "input_tokens",
+            "output_tokens",
+            "sanitized_error",
+            "created_at",
+        )
+
+
+class AnalystSupportRequestDetailSerializer(AnalystSupportRequestSerializer):
+    analysis_attempts = AnalysisAttemptSerializer(many=True, read_only=True)
+
+    class Meta(AnalystSupportRequestSerializer.Meta):
+        fields = AnalystSupportRequestSerializer.Meta.fields + ("analysis_attempts",)
+
+
 class AnalystSupportRequestListView(generics.ListAPIView):
     permission_classes = [IsSupportRequestAnalyst]
     queryset = SupportRequest.objects.order_by("-created_at")
@@ -58,7 +95,7 @@ class AnalystSupportRequestListView(generics.ListAPIView):
 class AnalystSupportRequestDetailView(generics.RetrieveAPIView):
     permission_classes = [IsSupportRequestAnalyst]
     queryset = SupportRequest.objects.all()
-    serializer_class = AnalystSupportRequestSerializer
+    serializer_class = AnalystSupportRequestDetailSerializer
 
 
 class HumanReviewSerializer(serializers.Serializer):
@@ -94,4 +131,41 @@ class AnalystSupportRequestApproveView(generics.GenericAPIView):
                 "approved_response": support_request.approved_response,
                 "resolved_at": support_request.resolved_at,
             }
+        )
+
+
+class AnalysisRetrySerializer(serializers.Serializer):
+    idempotency_key = serializers.UUIDField()
+
+
+class AnalystSupportRequestRetryAnalysisView(generics.GenericAPIView):
+    permission_classes = [IsSupportRequestAnalyst]
+    queryset = SupportRequest.objects.all()
+    serializer_class = AnalysisRetrySerializer
+
+    def post(self, request, pk):
+        get_object_or_404(self.get_queryset(), pk=pk)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            run, created = request_analysis_retry(
+                support_request_id=pk, **serializer.validated_data
+            )
+        except InvalidAnalysisRetryTransition as exc:
+            return Response({"detail": str(exc)}, status=409)
+        except IdempotencyKeyConflict as exc:
+            return Response({"detail": str(exc)}, status=409)
+        except AnalysisRetryRateLimited as exc:
+            return Response(
+                {"detail": str(exc)},
+                status=429,
+                headers={"Retry-After": str(exc.retry_after_seconds)},
+            )
+        return Response(
+            {
+                "idempotency_key": str(run.idempotency_key),
+                "status": run.status,
+                "created": created,
+            },
+            status=202,
         )

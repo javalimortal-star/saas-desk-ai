@@ -2,6 +2,7 @@ from django.urls import path
 
 from support_requests.api import (
     AnalystSupportRequestApproveView as AnalystSupportRequestApiApproveView,
+    AnalystSupportRequestRetryAnalysisView as AnalystSupportRequestApiRetryAnalysisView,
     AnalystSupportRequestDetailView as AnalystSupportRequestApiDetailView,
     AnalystSupportRequestListView as AnalystSupportRequestApiListView,
     PublicSupportRequestCreateView,
@@ -12,6 +13,7 @@ from support_requests.views import (
     AnalystSupportRequestDetailView,
     AnalystSupportRequestListView,
     AnalystSupportRequestApproveView,
+    AnalystSupportRequestRetryAnalysisView,
     SupportRequestCreateView,
     SupportRequestSubmittedView,
 )
@@ -41,6 +43,11 @@ urlpatterns = [
         AnalystSupportRequestApiApproveView.as_view(),
         name="analyst-api-approve",
     ),
+    path(
+        "api/v1/analyst/requests/<int:pk>/retry-analysis/",
+        AnalystSupportRequestApiRetryAnalysisView.as_view(),
+        name="analyst-api-retry-analysis",
+    ),
     path("analyst/login/", AnalystLoginView.as_view(), name="analyst-login"),
     path("analyst/logout/", AnalystLogoutView.as_view(), name="analyst-logout"),
     path("analyst/requests/", AnalystSupportRequestListView.as_view(), name="analyst-list"),
@@ -53,5 +60,10 @@ urlpatterns = [
         "analyst/requests/<int:pk>/approve/",
         AnalystSupportRequestApproveView.as_view(),
         name="analyst-approve",
+    ),
+    path(
+        "analyst/requests/<int:pk>/retry-analysis/",
+        AnalystSupportRequestRetryAnalysisView.as_view(),
+        name="analyst-retry-analysis",
     ),
 ]
