@@ -12,6 +12,6 @@ RUN pip install --no-cache-dir .
 
 COPY manage.py ./
 COPY templates ./templates
-RUN python manage.py collectstatic --noinput
+RUN DJANGO_DEBUG=false DJANGO_SECRET_KEY=collectstatic-build-only python manage.py collectstatic --noinput
 
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]

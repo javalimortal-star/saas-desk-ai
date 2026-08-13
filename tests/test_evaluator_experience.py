@@ -210,3 +210,13 @@ def test_render_entrypoint_prepares_database_then_starts_gunicorn(monkeypatch):
             ],
         ),
     ]
+
+
+def test_docker_image_builds_the_production_static_manifest():
+    project_root = Path(__file__).parents[1]
+    dockerfile = (project_root / "Dockerfile").read_text(encoding="utf-8")
+
+    assert (
+        "RUN DJANGO_DEBUG=false DJANGO_SECRET_KEY=collectstatic-build-only "
+        "python manage.py collectstatic --noinput" in dockerfile
+    )
