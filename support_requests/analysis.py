@@ -70,10 +70,14 @@ class AssistedAnalysis:
 
 
 class AnalysisProvider(Protocol):
+    model: str
+
     def analyze(self, support_request: SupportRequest) -> AssistedAnalysis: ...
 
 
 class FakeAnalysisProvider:
+    model = "fake/deterministic"
+
     def analyze(self, support_request: SupportRequest) -> AssistedAnalysis:
         return AssistedAnalysis(
             summary="Solicitante relata dificuldade de acesso à conta.",

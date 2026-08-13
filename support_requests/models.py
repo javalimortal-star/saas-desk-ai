@@ -79,12 +79,15 @@ class AnalysisAttemptManager(models.Manager):
         attempt.save()
         return attempt
 
-    def record_failure(self, support_request, sanitized_error, duration_ms=0):
+    def record_failure(
+        self, support_request, sanitized_error, duration_ms=0, provider_model=""
+    ):
         attempt = self.model(
             support_request=support_request,
             outcome=self.model.Outcome.FAILED,
             sanitized_error=sanitized_error,
             duration_ms=duration_ms,
+            provider_model=provider_model,
         )
         attempt.full_clean()
         attempt.save()

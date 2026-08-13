@@ -3,6 +3,7 @@ from uuid import uuid4
 import pytest
 from django.contrib.auth.models import Permission
 from django.urls import reverse
+from django.utils import timezone
 
 from support_requests.analysis import (
     AnalysisFailureCode,
@@ -96,6 +97,7 @@ def test_task_redelivery_calls_provider_and_records_attempt_only_once(
 ):
     class CountingProvider:
         calls = 0
+        model = "test/model"
 
         def analyze(self, request):
             self.calls += 1
@@ -132,6 +134,8 @@ def test_task_redelivery_calls_provider_and_records_attempt_only_once(
 @pytest.mark.django_db
 def test_failed_retry_records_only_a_sanitized_error(support_request, monkeypatch):
     class FailingProvider:
+        model = "test/requested-model"
+
         def analyze(self, request):
             raise AnalysisProviderFailure(AnalysisFailureCode.QUOTA_UNAVAILABLE)
 
@@ -150,7 +154,7 @@ def test_failed_retry_records_only_a_sanitized_error(support_request, monkeypatc
     assert attempt.outcome == AnalysisAttempt.Outcome.FAILED
     assert attempt.sanitized_error == "Cota do provedor indisponível."
     assert attempt.duration_ms is not None
-    assert attempt.provider_model == ""
+    assert attempt.provider_model == "test/requested-model"
     assert attempt.input_tokens is None
     assert attempt.output_tokens is None
 
@@ -172,8 +176,6 @@ def test_queued_retry_does_not_overwrite_a_human_resolution(support_request, mon
     support_request.final_category = SupportRequest.Category.ACCESS
     support_request.final_priority = SupportRequest.Priority.NORMAL
     support_request.approved_response = "Concluído pelo Analista."
-    from django.utils import timezone
-
     support_request.resolved_at = timezone.now()
     support_request.save()
 
@@ -185,6 +187,47 @@ def test_queued_retry_does_not_overwrite_a_human_resolution(support_request, mon
     assert run.status == AnalysisRun.Status.SKIPPED
     assert run.attempt is None
     assert support_request.stage == SupportRequest.Stage.RESOLVED
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("provider_fails", [False, True])
+def test_provider_result_does_not_overwrite_a_concurrent_resolution(
+    support_request, monkeypatch, provider_fails
+):
+    class ResolvingProvider:
+        model = "test/model"
+
+        def analyze(self, request):
+            SupportRequest.objects.filter(pk=request.pk).update(
+                stage=SupportRequest.Stage.RESOLVED,
+                final_category=SupportRequest.Category.OTHER,
+                final_priority=SupportRequest.Priority.NORMAL,
+                approved_response="Resolvida por outra operação.",
+                resolved_at=timezone.now(),
+            )
+            if provider_fails:
+                raise AnalysisProviderFailure(AnalysisFailureCode.TIMEOUT)
+            return AssistedAnalysis(
+                summary="Resultado tardio.",
+                category=SupportRequest.Category.ACCESS,
+                priority=SupportRequest.Priority.HIGH,
+                suggested_response="Não deve ser persistida.",
+            )
+
+    monkeypatch.setattr(
+        analysis_tasks, "get_analysis_provider", lambda: ResolvingProvider()
+    )
+    run = AnalysisRun.objects.create(support_request=support_request)
+
+    retry_support_request_analysis.run(run.pk)
+
+    support_request.refresh_from_db()
+    run.refresh_from_db()
+    assert support_request.stage == SupportRequest.Stage.RESOLVED
+    assert support_request.approved_response == "Resolvida por outra operação."
+    assert run.status == AnalysisRun.Status.SKIPPED
+    assert run.attempt is None
+    assert support_request.analysis_attempts.count() == 0
 
 
 @pytest.mark.django_db
@@ -260,8 +303,6 @@ def test_retry_rejects_disallowed_stages(client, analyst, support_request, stage
         support_request.final_category = SupportRequest.Category.ACCESS
         support_request.final_priority = SupportRequest.Priority.NORMAL
         support_request.approved_response = "Concluído."
-        from django.utils import timezone
-
         support_request.resolved_at = timezone.now()
     support_request.stage = stage
     support_request.save()

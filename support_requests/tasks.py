@@ -18,8 +18,9 @@ def analyze_support_request(support_request_id):
         support_request.save(update_fields=["stage"])
 
     started_at = perf_counter()
+    provider = get_analysis_provider()
     try:
-        analysis = get_analysis_provider().analyze(support_request)
+        analysis = provider.analyze(support_request)
     except AnalysisProviderFailure as failure:
         duration_ms = round((perf_counter() - started_at) * 1000)
         with transaction.atomic():
@@ -30,6 +31,7 @@ def analyze_support_request(support_request_id):
                 support_request,
                 failure.sanitized_message,
                 duration_ms,
+                provider_model=getattr(provider, "model", ""),
             )
             support_request.stage = SupportRequest.Stage.ANALYSIS_FAILED
             support_request.save(update_fields=["stage"])
@@ -72,8 +74,9 @@ def retry_support_request_analysis(analysis_run_id):
         support_request.save(update_fields=["stage"])
 
     started_at = perf_counter()
+    provider = get_analysis_provider()
     try:
-        analysis = get_analysis_provider().analyze(support_request)
+        analysis = provider.analyze(support_request)
     except AnalysisProviderFailure as failure:
         duration_ms = round((perf_counter() - started_at) * 1000)
         with transaction.atomic():
@@ -83,8 +86,16 @@ def retry_support_request_analysis(analysis_run_id):
             support_request = SupportRequest.objects.select_for_update().get(
                 pk=run.support_request_id
             )
+            if support_request.stage != SupportRequest.Stage.ANALYZING:
+                run.status = AnalysisRun.Status.SKIPPED
+                run.completed_at = timezone.now()
+                run.save(update_fields=["status", "completed_at"])
+                return
             attempt = AnalysisAttempt.objects.record_failure(
-                support_request, failure.sanitized_message, duration_ms
+                support_request,
+                failure.sanitized_message,
+                duration_ms,
+                provider_model=getattr(provider, "model", ""),
             )
             run.status = AnalysisRun.Status.COMPLETED
             run.attempt = attempt
@@ -100,6 +111,11 @@ def retry_support_request_analysis(analysis_run_id):
         if run.status != AnalysisRun.Status.PROCESSING:
             return
         support_request = SupportRequest.objects.select_for_update().get(pk=run.support_request_id)
+        if support_request.stage != SupportRequest.Stage.ANALYZING:
+            run.status = AnalysisRun.Status.SKIPPED
+            run.completed_at = timezone.now()
+            run.save(update_fields=["status", "completed_at"])
+            return
         attempt = AnalysisAttempt.objects.record_for(support_request, analysis, duration_ms)
         run.status = AnalysisRun.Status.COMPLETED
         run.attempt = attempt
