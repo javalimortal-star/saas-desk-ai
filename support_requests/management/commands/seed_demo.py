@@ -3,13 +3,14 @@ import uuid
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 
 from support_requests.analysis import AssistedAnalysis
 from support_requests.models import AnalysisAttempt, SupportRequest
 
 DEMO_NAMESPACE = uuid.UUID("876ff131-23af-44fe-a55f-1f8cab850738")
+DEMO_ANALYST_EMAIL = "demo-analyst@saas-desk-ai.invalid"
 DEMO_REQUESTS = (
     ("recebida", SupportRequest.Stage.RECEIVED, None, None),
     ("em-analise", SupportRequest.Stage.ANALYZING, None, None),
@@ -26,7 +27,14 @@ class Command(BaseCommand):
     help = "Cria um Analista e Solicitações fictícias para avaliar a demonstração."
 
     def handle(self, *args, **options):
-        user, _ = get_user_model().objects.get_or_create(username="demo-analyst")
+        user, created = get_user_model().objects.get_or_create(
+            username="demo-analyst",
+            defaults={"email": DEMO_ANALYST_EMAIL},
+        )
+        if not created and user.email != DEMO_ANALYST_EMAIL:
+            raise CommandError(
+                "O nome demo-analyst já pertence a uma conta que não foi criada pelo seed."
+            )
         user.is_staff = False
         user.is_superuser = False
         user.set_password(settings.DEMO_ANALYST_PASSWORD)

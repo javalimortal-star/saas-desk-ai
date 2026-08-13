@@ -1,6 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.urls import reverse
 
 from support_requests.access import is_support_request_analyst
@@ -38,6 +39,24 @@ def test_seed_demo_is_idempotent_and_creates_non_admin_analyst_and_varied_queue(
 
 
 @pytest.mark.django_db
+def test_seed_demo_refuses_to_take_over_an_existing_account():
+    user = get_user_model().objects.create_user(
+        username="demo-analyst",
+        email="real-person@example.com",
+        password="original-password",
+        is_staff=True,
+    )
+
+    with pytest.raises(CommandError):
+        call_command("seed_demo")
+
+    user.refresh_from_db()
+    assert user.is_staff is True
+    assert user.check_password("original-password")
+    assert not is_support_request_analyst(user)
+
+
+@pytest.mark.django_db
 def test_openapi_and_swagger_expose_real_contracts_and_analyst_security(client):
     schema_response = client.get(reverse("api-schema"), HTTP_ACCEPT="application/json")
     docs_response = client.get(reverse("api-docs"))
@@ -49,6 +68,18 @@ def test_openapi_and_swagger_expose_real_contracts_and_analyst_security(client):
     assert "/api/v1/analyst/requests/{id}/approve/" in schema["paths"]
     assert "/api/v1/analyst/requests/{id}/retry-analysis/" in schema["paths"]
     assert schema["paths"]["/api/v1/analyst/requests/"]["get"]["security"]
+    public_responses = schema["paths"]["/api/v1/requests/"]["post"]["responses"]
+    approval_responses = schema["paths"]["/api/v1/analyst/requests/{id}/approve/"]["post"][
+        "responses"
+    ]
+    retry_responses = schema["paths"]["/api/v1/analyst/requests/{id}/retry-analysis/"]["post"][
+        "responses"
+    ]
+    assert set(public_responses) >= {"201", "400", "429"}
+    assert set(approval_responses) >= {"200", "400", "409"}
+    assert set(retry_responses) >= {"202", "400", "409", "429"}
+    assert "Retry-After" in public_responses["429"]["headers"]
+    assert "Retry-After" in retry_responses["429"]["headers"]
     assert docs_response.status_code == 200
     assert "swagger" in docs_response.content.decode().lower()
 

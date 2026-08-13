@@ -45,10 +45,37 @@ class PublicSupportRequestSerializer(serializers.ModelSerializer):
         )
 
 
+class ErrorDetailSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+
+
+class ValidationErrorSerializer(serializers.Serializer):
+    errors = serializers.DictField(required=False)
+
+
 class PublicSupportRequestCreateView(generics.CreateAPIView):
     authentication_classes = []
     permission_classes = []
     serializer_class = PublicSupportRequestSerializer
+
+    @extend_schema(
+        responses={
+            201: PublicSupportRequestSerializer,
+            400: ValidationErrorSerializer,
+            429: ErrorDetailSerializer,
+        },
+        parameters=[
+            OpenApiParameter(
+                "Retry-After",
+                int,
+                OpenApiParameter.HEADER,
+                response=[429],
+                description="Segundos até um novo envio ser permitido.",
+            )
+        ],
+    )
+    def post(self, request, *args, **kwargs):
+        return super().post(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
         try:
@@ -179,7 +206,13 @@ class AnalystSupportRequestApproveView(generics.GenericAPIView):
     queryset = SupportRequest.objects.all()
     serializer_class = HumanReviewSerializer
 
-    @extend_schema(responses=HumanReviewResultSerializer)
+    @extend_schema(
+        responses={
+            200: HumanReviewResultSerializer,
+            400: ValidationErrorSerializer,
+            409: ErrorDetailSerializer,
+        }
+    )
     def post(self, request, pk):
         self.get_object()
         serializer = self.get_serializer(data=request.data)
@@ -218,7 +251,23 @@ class AnalystSupportRequestRetryAnalysisView(generics.GenericAPIView):
     queryset = SupportRequest.objects.all()
     serializer_class = AnalysisRetrySerializer
 
-    @extend_schema(responses={202: AnalysisRetryResultSerializer})
+    @extend_schema(
+        responses={
+            202: AnalysisRetryResultSerializer,
+            400: ValidationErrorSerializer,
+            409: ErrorDetailSerializer,
+            429: ErrorDetailSerializer,
+        },
+        parameters=[
+            OpenApiParameter(
+                "Retry-After",
+                int,
+                OpenApiParameter.HEADER,
+                response=[429],
+                description="Segundos até uma nova Tentativa ser permitida.",
+            )
+        ],
+    )
     def post(self, request, pk):
         get_object_or_404(self.get_queryset(), pk=pk)
         serializer = self.get_serializer(data=request.data)

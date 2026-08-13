@@ -49,6 +49,7 @@ python -m venv .venv
 # Linux/macOS: .venv/bin/python -m pip install -e ".[dev]"
 .venv/Scripts/python -m pytest -q
 .venv/Scripts/python -m ruff check .
+.venv/Scripts/python -m ruff format --check .
 .venv/Scripts/python manage.py makemigrations --check --dry-run
 ```
 
@@ -84,7 +85,7 @@ Open <http://localhost:8000/>, sign in at <http://localhost:8000/analyst/login/>
 
 Use `ANALYSIS_PROVIDER=fake` for explicit deterministic local evaluation without a key. Use `ANALYSIS_PROVIDER=openrouter` with `OPENROUTER_API_KEY` for the real integration. OpenRouter errors never silently fall back to fake output.
 
-Install `.[dev]`, then run `python -m pytest -q`, `python -m ruff check .`, and `python manage.py makemigrations --check --dry-run`. Public submission returns only a protocol, has input/rate limits, and cannot retrieve a request. Analyst APIs require authenticated permission. The demo retention command is repeatable and preserves active work.
+Install `.[dev]`, then run `python -m pytest -q`, `python -m ruff check .`, `python -m ruff format --check .`, and `python manage.py makemigrations --check --dry-run`. Public submission returns only a protocol, has input/rate limits, and cannot retrieve a request. Analyst APIs require authenticated permission. The demo retention command is repeatable and preserves active work.
 
 ### Limitations and roadmap
 
