@@ -11,6 +11,16 @@ class AssistedAnalysis:
     priority: str
     suggested_response: str
 
+    def __post_init__(self):
+        if not self.summary.strip():
+            raise ValueError("Resumo inválido")
+        if self.category not in SupportRequest.Category.values:
+            raise ValueError("Categoria inválida")
+        if self.priority not in SupportRequest.Priority.values:
+            raise ValueError("Prioridade inválida")
+        if not self.suggested_response.strip():
+            raise ValueError("Resposta sugerida inválida")
+
 
 class AnalysisProvider(Protocol):
     def analyze(self, support_request: SupportRequest) -> AssistedAnalysis: ...

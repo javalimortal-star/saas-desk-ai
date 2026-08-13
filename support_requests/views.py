@@ -1,6 +1,7 @@
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
+from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.views.generic import CreateView, DetailView, ListView, TemplateView
@@ -8,7 +9,7 @@ from django.views.generic import CreateView, DetailView, ListView, TemplateView
 from support_requests.access import ANALYST_PERMISSION, is_support_request_analyst
 from support_requests.forms import SupportRequestForm
 from support_requests.models import SupportRequest
-from support_requests.tasks import analyze_support_request
+from support_requests.submission import submit_support_request
 
 
 class SupportRequestCreateView(CreateView):
@@ -19,9 +20,8 @@ class SupportRequestCreateView(CreateView):
         return reverse("support_requests:submitted", kwargs={"protocol": self.object.protocol})
 
     def form_valid(self, form):
-        response = super().form_valid(form)
-        analyze_support_request.delay_on_commit(self.object.pk)
-        return response
+        self.object = submit_support_request(**form.cleaned_data)
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class SupportRequestSubmittedView(TemplateView):

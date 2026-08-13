@@ -1,11 +1,12 @@
 import pytest
+from threading import Event, Thread
 from django.contrib.auth.models import Permission
 from django.urls import reverse
 
 from support_requests.models import AnalysisAttempt, SupportRequest
 from support_requests.tasks import analyze_support_request
 import support_requests.tasks as analysis_tasks
-from support_requests.analysis import FakeAnalysisProvider
+from support_requests.analysis import AssistedAnalysis, FakeAnalysisProvider
 
 
 @pytest.mark.django_db
@@ -100,26 +101,71 @@ def test_public_api_schedules_analysis_without_waiting_for_the_provider(client, 
     assert support_request.analysis_attempts.count() == 0
 
 
-@pytest.mark.django_db
-def test_analysis_moves_through_analyzing_before_awaiting_review(monkeypatch):
+@pytest.mark.django_db(transaction=True)
+def test_analysis_moves_through_a_committed_analyzing_stage(monkeypatch):
     support_request = SupportRequest.objects.create(
         requester_name="Ana Silva",
         requester_email="ana@example.com",
         subject="Não consigo acessar minha conta",
         message="A recuperação de senha não envia o e-mail.",
     )
-    observed_stages = []
+    provider_started = Event()
+    allow_provider_to_finish = Event()
+    task_errors = []
 
-    class ObservingProvider:
+    class BlockingProvider:
         def analyze(self, current_request):
-            current_request.refresh_from_db()
-            observed_stages.append(current_request.stage)
+            provider_started.set()
+            allow_provider_to_finish.wait(timeout=5)
             return FakeAnalysisProvider().analyze(current_request)
 
-    monkeypatch.setattr(analysis_tasks, "get_analysis_provider", ObservingProvider)
+    monkeypatch.setattr(analysis_tasks, "get_analysis_provider", BlockingProvider)
 
-    analyze_support_request.run(support_request.pk)
+    def run_task():
+        try:
+            analyze_support_request.run(support_request.pk)
+        except Exception as error:
+            task_errors.append(error)
+
+    task_thread = Thread(target=run_task)
+    task_thread.start()
+    assert provider_started.wait(timeout=5)
 
     support_request.refresh_from_db()
-    assert observed_stages == [SupportRequest.Stage.ANALYZING]
+    assert support_request.stage == SupportRequest.Stage.ANALYZING
+
+    allow_provider_to_finish.set()
+    task_thread.join(timeout=5)
+
+    assert task_thread.is_alive() is False
+    assert task_errors == []
+    support_request.refresh_from_db()
     assert support_request.stage == SupportRequest.Stage.AWAITING_REVIEW
+
+
+@pytest.mark.django_db
+def test_invalid_assisted_analysis_is_rejected_before_it_is_recorded(monkeypatch):
+    support_request = SupportRequest.objects.create(
+        requester_name="Ana Silva",
+        requester_email="ana@example.com",
+        subject="Não consigo acessar minha conta",
+        message="A recuperação de senha não envia o e-mail.",
+    )
+
+    class InvalidProvider:
+        def analyze(self, current_request):
+            return AssistedAnalysis(
+                summary="Resumo",
+                category="categoria_inventada",
+                priority=SupportRequest.Priority.NORMAL,
+                suggested_response="Resposta sugerida.",
+            )
+
+    monkeypatch.setattr(analysis_tasks, "get_analysis_provider", InvalidProvider)
+
+    with pytest.raises(ValueError, match="Categoria inválida"):
+        analyze_support_request.run(support_request.pk)
+
+    support_request.refresh_from_db()
+    assert support_request.stage == SupportRequest.Stage.ANALYZING
+    assert support_request.analysis_attempts.count() == 0

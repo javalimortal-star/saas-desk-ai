@@ -32,6 +32,17 @@ class SupportRequest(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class AnalysisAttemptManager(models.Manager):
+    def record_for(self, support_request, assisted_analysis):
+        return self.create(
+            support_request=support_request,
+            summary=assisted_analysis.summary,
+            recommended_category=assisted_analysis.category,
+            recommended_priority=assisted_analysis.priority,
+            suggested_response=assisted_analysis.suggested_response,
+        )
+
+
 class AnalysisAttempt(models.Model):
     support_request = models.ForeignKey(
         SupportRequest,
@@ -43,3 +54,5 @@ class AnalysisAttempt(models.Model):
     recommended_priority = models.CharField(max_length=16, choices=SupportRequest.Priority)
     suggested_response = models.TextField(max_length=4000)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = AnalysisAttemptManager()
