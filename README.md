@@ -18,6 +18,13 @@ Links: [código-fonte](https://github.com/javalimortal-star/saas-desk-ai) · dem
 
 Fluxo: `Solicitante → Django → PostgreSQL → Celery/Redis → provedor → Revisão humana`.
 
+| Ambiente | Execução da Análise assistida | Motivo |
+| --- | --- | --- |
+| Docker Compose | Celery assíncrono com worker e Redis separados | Demonstra a arquitetura indicada para produção. |
+| Demo gratuita no Render | Celery eager no processo web, sem Redis ou worker hospedados | Evita um recurso pago somente para a avaliação do portfólio. |
+
+O modo hospedado é uma limitação declarada da demonstração, não um fallback silencioso: a integração com OpenRouter continua real e a mesma tarefa Celery e os mesmos serviços de domínio são exercitados.
+
 ## Executar a demonstração
 
 Pré-requisito: Docker Desktop.
@@ -35,7 +42,7 @@ docker compose exec web python manage.py seed_demo
 
 Credenciais locais padrão: `demo-analyst` / `demo-password`. O Analista recebe somente a permissão necessária e não é `staff` nem superusuário. Altere `DEMO_ANALYST_PASSWORD` fora de uma avaliação local.
 
-Sem Redis local, use `CELERY_TASK_ALWAYS_EAGER=true` apenas para executar a tarefa no próprio processo durante uma demonstração de desenvolvimento. Produção e Docker Compose mantêm o worker separado.
+Sem Redis local, use `CELERY_TASK_ALWAYS_EAGER=true` apenas para executar a tarefa no próprio processo durante uma demonstração. O Docker Compose mantém esse valor desativado e usa o worker separado.
 
 ## Configuração de IA
 
@@ -84,6 +91,8 @@ Links: [source code](https://github.com/javalimortal-star/saas-desk-ai) · live 
 ### Architecture and local run
 
 Django/DRF serves the UI and API; PostgreSQL stores requests, attempts, human decisions, and idempotency; Celery and Redis run background jobs; OpenRouter is optional.
+
+Docker Compose uses the full asynchronous Celery/Redis architecture. The free Render portfolio demo explicitly enables Celery eager mode in the web process because Render does not offer free background workers; the real OpenRouter integration remains enabled.
 
 ```bash
 cp .env.example .env

@@ -4,7 +4,7 @@ Substitua `[DEMO]` e `[CÓDIGO]` pelos links publicados.
 
 ## Currículo
 
-**SaaS Desk AI — Django, DRF e IA:** desenvolvi uma central de atendimento com PostgreSQL, Celery/Redis e OpenRouter, revisão humana obrigatória, idempotência, rate limiting, OpenAPI e 78+ testes automatizados. [DEMO] · [CÓDIGO]
+**SaaS Desk AI — Django, DRF e IA:** desenvolvi uma central de atendimento com PostgreSQL, Celery/Redis e OpenRouter, revisão humana obrigatória, idempotência, rate limiting, OpenAPI e 82+ testes automatizados. [DEMO] · [CÓDIGO]
 
 ## LinkedIn
 
@@ -13,3 +13,7 @@ Criei o SaaS Desk AI para demonstrar backend Python aplicado a um problema real:
 ## Mensagem de candidatura
 
 Olá! Estou me candidatando à vaga de Desenvolvedor Python Backend Júnior. Para demonstrar aderência prática, construí o SaaS Desk AI: uma API Django integrada a IA via OpenRouter, com processamento Celery/Redis, PostgreSQL, revisão humana, tratamento de falhas, testes automatizados e documentação OpenAPI. A demonstração está em [DEMO] e o código em [CÓDIGO]. Ficarei feliz em explicar as decisões técnicas na entrevista.
+
+## Nota para a entrevista
+
+Modelei o processamento com Celery e Redis para não bloquear requisições. Na demonstração gratuita, habilitei execução imediata por restrição de custo da hospedagem, mas preservei e testei a arquitetura assíncrona completa no Docker Compose.

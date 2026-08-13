@@ -26,7 +26,13 @@ DEMO_REQUESTS = (
 class Command(BaseCommand):
     help = "Cria um Analista e Solicitações fictícias para avaliar a demonstração."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--preserve-existing", action="store_true", help="Não redefine dados existentes."
+        )
+
     def handle(self, *args, **options):
+        preserve_existing = options["preserve_existing"]
         user, created = get_user_model().objects.get_or_create(
             username="demo-analyst",
             defaults={"email": DEMO_ANALYST_EMAIL},
@@ -37,26 +43,35 @@ class Command(BaseCommand):
             )
         user.is_staff = False
         user.is_superuser = False
-        user.set_password(settings.DEMO_ANALYST_PASSWORD)
+        if created or not preserve_existing:
+            user.set_password(settings.DEMO_ANALYST_PASSWORD)
         user.save()
         user.user_permissions.add(Permission.objects.get(codename="view_supportrequest"))
 
         for slug, stage, category, priority in DEMO_REQUESTS:
             is_resolved = stage == SupportRequest.Stage.RESOLVED
-            support_request, _ = SupportRequest.objects.update_or_create(
-                protocol=uuid.uuid5(DEMO_NAMESPACE, slug),
-                defaults={
-                    "requester_name": "Pessoa Fictícia",
-                    "requester_email": f"{slug}@example.com",
-                    "subject": f"Solicitação fictícia: {slug}",
-                    "message": "Conteúdo fictício criado pelo comando seed_demo.",
-                    "stage": stage,
-                    "final_category": category if is_resolved else "",
-                    "final_priority": priority if is_resolved else "",
-                    "approved_response": "Resposta fictícia aprovada." if is_resolved else "",
-                    "resolved_at": timezone.now() if is_resolved else None,
-                },
-            )
+            defaults = {
+                "requester_name": "Pessoa Fictícia",
+                "requester_email": f"{slug}@example.com",
+                "subject": f"Solicitação fictícia: {slug}",
+                "message": "Conteúdo fictício criado pelo comando seed_demo.",
+                "stage": stage,
+                "final_category": category if is_resolved else "",
+                "final_priority": priority if is_resolved else "",
+                "approved_response": "Resposta fictícia aprovada." if is_resolved else "",
+                "resolved_at": timezone.now() if is_resolved else None,
+            }
+            protocol = uuid.uuid5(DEMO_NAMESPACE, slug)
+            if preserve_existing:
+                support_request, request_created = SupportRequest.objects.get_or_create(
+                    protocol=protocol, defaults=defaults
+                )
+                if not request_created:
+                    continue
+            else:
+                support_request, _ = SupportRequest.objects.update_or_create(
+                    protocol=protocol, defaults=defaults
+                )
             if category and not is_resolved:
                 if not support_request.analysis_attempts.filter(
                     outcome=AnalysisAttempt.Outcome.SUCCEEDED

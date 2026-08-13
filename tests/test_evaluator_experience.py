@@ -59,6 +59,25 @@ def test_seed_demo_refuses_to_take_over_an_existing_account():
 
 
 @pytest.mark.django_db
+def test_bootstrap_demo_preserves_existing_review_and_password():
+    call_command("bootstrap_demo")
+    analyst = get_user_model().objects.get(username="demo-analyst")
+    analyst.set_password("evaluator-changed-password")
+    analyst.save(update_fields=["password"])
+    reviewed = SupportRequest.objects.get(subject="Solicitação fictícia: outro")
+    reviewed.approved_response = "Decisão humana que deve ser preservada."
+    reviewed.save(update_fields=["approved_response"])
+
+    call_command("bootstrap_demo")
+
+    analyst.refresh_from_db()
+    reviewed.refresh_from_db()
+    assert analyst.check_password("evaluator-changed-password")
+    assert reviewed.stage == SupportRequest.Stage.RESOLVED
+    assert reviewed.approved_response == "Decisão humana que deve ser preservada."
+
+
+@pytest.mark.django_db
 def test_openapi_and_swagger_expose_real_contracts_and_analyst_security(client):
     schema_response = client.get(reverse("api-schema"), HTTP_ACCEPT="application/json")
     docs_response = client.get(reverse("api-docs"))
@@ -137,13 +156,17 @@ def test_public_pages_expose_evaluator_links_and_limited_demo_credentials(client
     assert "não é administradora" in login_page.content.decode()
 
 
-def test_render_blueprint_has_the_full_stack_and_keeps_api_key_secret():
-    blueprint = (Path(__file__).parents[1] / "render.yaml").read_text(encoding="utf-8")
+def test_render_blueprint_uses_free_eager_demo_and_keeps_api_key_secret():
+    project_root = Path(__file__).parents[1]
+    blueprint = (project_root / "render.yaml").read_text(encoding="utf-8")
+    compose = (project_root / "compose.yaml").read_text(encoding="utf-8")
 
     assert "type: web" in blueprint
-    assert "type: worker" in blueprint
-    assert "type: keyvalue" in blueprint
+    assert "type: worker" not in blueprint
+    assert "type: keyvalue" not in blueprint
     assert "fromDatabase:" in blueprint
-    assert "preDeployCommand: python manage.py migrate" in blueprint
-    assert "initialDeployHook: python manage.py seed_demo" in blueprint
+    assert "python manage.py migrate && python manage.py bootstrap_demo && gunicorn" in blueprint
+    assert 'CELERY_TASK_ALWAYS_EAGER\n        value: "true"' in blueprint
     assert "OPENROUTER_API_KEY\n        sync: false" in blueprint
+    assert "redis:" in compose
+    assert "worker:" in compose

@@ -1,25 +1,31 @@
 # Publicação no Render
 
-Escolha registrada em 13 de agosto de 2026: Render Blueprint. A plataforma foi escolhida porque oferece os quatro componentes do projeto no mesmo manifesto: web service para Django, PostgreSQL gerenciado, Key Value compatível com Redis e background worker para Celery.
+Escolha registrada em 13 de agosto de 2026: Render Blueprint. A plataforma é compatível com a arquitetura completa — web service para Django, PostgreSQL gerenciado, Key Value compatível com Redis e background worker para Celery —, mas o Blueprint de portfólio usa apenas os componentes gratuitos.
 
 Fontes oficiais: [Django no Render](https://render.com/docs/deploy-django), [background workers](https://render.com/docs/background-workers), [Blueprint](https://render.com/docs/blueprint-spec) e [variáveis secretas](https://render.com/docs/configure-environment-variables).
 
 O processo web não é alcançável diretamente pela internet: todo tráfego entra pelo balanceador da plataforma. O marcador automático `RENDER=true` habilita a leitura defensiva do último endereço válido de `X-Forwarded-For`; prefixos forjados são ignorados. Fora do Render, somente endereços em `TRUSTED_PROXY_IPS` são confiados.
 
+## Diferença intencional da demonstração
+
+O worker contínuo não possui plano gratuito. Para evitar cobrança, `render.yaml` cria somente Django e PostgreSQL gratuitos e configura `CELERY_TASK_ALWAYS_EAGER=true`. A Análise assistida usa a integração real com OpenRouter, mas roda no processo da requisição. Redis e o worker separado permanecem no Docker Compose e são o desenho recomendado para uma produção com carga real.
+
+Essa diferença é explícita e limitada ao ambiente gratuito. Não existe fallback automático para o provedor falso.
+
 ## Custo e criação
 
-O worker contínuo não possui plano gratuito. O manifesto fixa web, PostgreSQL e Key Value no plano gratuito e o worker no plano `starter`; confirme o preço exibido pelo Render antes de aplicar o Blueprint.
+O manifesto fixa todos os recursos criados no plano `free`. O PostgreSQL gratuito expira após 30 dias e a aplicação web pode hibernar depois de ficar ociosa, conforme a [documentação do plano gratuito](https://render.com/docs/free).
 
 1. No Render, crie um Blueprint a partir de `javalimortal-star/saas-desk-ai`.
 2. Informe uma nova `OPENROUTER_API_KEY` quando o painel solicitar. Nunca grave a chave no Git. A senha intencionalmente pública da conta limitada é definida no manifesto para que avaliadores consigam entrar.
-3. Confira os planos e aplique. Migrações rodam em `preDeployCommand`; `seed_demo` roda somente no primeiro deploy.
+3. Confira que web e PostgreSQL estão como `free` e aplique. Como `preDeployCommand` é pago, o comando de inicialização executa migrações e `bootstrap_demo` antes do Gunicorn. Esse bootstrap cria somente fixtures ausentes e preserva revisões e senhas existentes após uma retomada do serviço.
 4. Guarde o URL externo em `README.md` e `docs/candidatura.md` após o smoke test.
 
 ## Verificação publicada
 
 - `GET /health/` retorna `{"status":"ok"}`.
 - O formulário público aceita somente dados fictícios e mostra um Protocolo sem dados privados.
-- O worker conclui uma Análise assistida real ou registra Falha na análise sanitizada.
+- O modo eager conclui uma Análise assistida real ou registra Falha na análise sanitizada; nenhuma resposta `fake` é usada.
 - `demo-analyst` entra sem acesso administrativo, revisa, trata manualmente e resolve.
 - `/api/docs/` abre o Swagger; `/api/schema/` entrega o OpenAPI.
 - Repetir uma análise respeita idempotência e limite de frequência.
