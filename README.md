@@ -4,7 +4,9 @@
 
 Uma central de atendimento de portfólio em que IA recomenda e uma pessoa decide. O Solicitante envia uma Solicitação fictícia; Celery processa a Análise assistida; o Analista revisa Categoria, Prioridade e Resposta sugerida antes da Resolução.
 
-Links: [código-fonte](https://github.com/javalimortal-star/saas-desk-ai) · demonstração publicada (adicionar após o deploy) · Swagger publicado (adicionar após o deploy)
+Links: [código-fonte](https://github.com/javalimortal-star/saas-desk-ai) · [demonstração publicada](https://saas-desk-ai-web.onrender.com/) · [Swagger publicado](https://saas-desk-ai-web.onrender.com/api/docs/)
+
+Avaliação pública: entre no [painel do Analista](https://saas-desk-ai-web.onrender.com/analyst/login/) com `demo-analyst` / `demo-password`. Essa conta possui somente a permissão de Analista; não é `staff` nem superusuária.
 
 ![Demonstração do fluxo crítico](docs/demo.gif)
 
@@ -74,7 +76,7 @@ O GitHub Actions executa as mesmas verificações com PostgreSQL 17.
 
 ## Limitações e roadmap
 
-Este é um SaaS demonstrativo: não envia a Resposta aprovada ao e-mail, usa autenticação por sessão e requer operação externa para backups, HTTPS, monitoramento e agendamento da retenção. Próximos passos: publicação, observabilidade, notificações e autenticação organizacional.
+Este é um SaaS demonstrativo: não envia a Resposta aprovada ao e-mail, usa autenticação por sessão e requer operação externa para backups, monitoramento e agendamento da retenção. Próximos passos: observabilidade, notificações e autenticação organizacional.
 
 Para publicar, consulte [a decisão e o checklist do Render](docs/deployment.md). Os [textos de candidatura](docs/candidatura.md) conectam as evidências do projeto à vaga.
 
@@ -84,7 +86,9 @@ Para publicar, consulte [a decisão e o checklist do Render](docs/deployment.md)
 
 SaaS Desk AI is a portfolio support desk where AI recommends and a human decides. A requester submits fictional data, Celery runs assisted analysis, and an analyst reviews category, priority, and suggested response before resolution.
 
-Links: [source code](https://github.com/javalimortal-star/saas-desk-ai) · live demo (add after deployment) · live Swagger (add after deployment)
+Links: [source code](https://github.com/javalimortal-star/saas-desk-ai) · [live demo](https://saas-desk-ai-web.onrender.com/) · [live Swagger](https://saas-desk-ai-web.onrender.com/api/docs/)
+
+Public evaluation: sign in to the [Analyst dashboard](https://saas-desk-ai-web.onrender.com/analyst/login/) with `demo-analyst` / `demo-password`. This account only has the Analyst permission; it is neither staff nor a superuser.
 
 ![Critical-path demo](docs/demo.gif)
 
@@ -110,6 +114,6 @@ Install `.[dev]`, then run `python -m pytest -q`, `python -m ruff check .`, `pyt
 
 ### Limitations and roadmap
 
-This demo does not email approved responses and still needs production HTTPS, backups, monitoring, and scheduled retention. Planned work includes deployment, observability, notifications, and organization-grade authentication.
+This demo does not email approved responses and still needs production backups, monitoring, and scheduled retention. Planned work includes observability, notifications, and organization-grade authentication.
 
 See the [Render deployment decision and checklist](docs/deployment.md) and the [Portuguese application copy](docs/candidatura.md).

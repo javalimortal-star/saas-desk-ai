@@ -32,6 +32,19 @@ O manifesto fixa todos os recursos criados no plano `free`. O PostgreSQL gratuit
 
 Registre data, commit, URL e resultado de cada item antes de fechar a issue #11.
 
+### Resultado do smoke test
+
+Verificado em 13 de agosto de 2026 no commit `da340b5`, em <https://saas-desk-ai-web.onrender.com/>:
+
+O avaliador entra em <https://saas-desk-ai-web.onrender.com/analyst/login/> com `demo-analyst` / `demo-password`; a conta não é `staff` nem superusuária.
+
+- health check, Swagger e esquema OpenAPI responderam com sucesso;
+- o formulário retornou somente o Protocolo para dados fictícios;
+- a primeira tentativa indisponível foi registrada com mensagem sanitizada e a repetição concluiu com o modelo gratuito real `google/gemma-4-26b-a4b-it:free`;
+- o Analista editou a Resposta sugerida e resolveu a Solicitação;
+- uma fixture com falha foi classificada e resolvida manualmente, sem depender da IA;
+- a conta demonstrativa permaneceu sem acesso administrativo e a API do Analista recusou acesso anônimo.
+
 ## Gravação segura
 
 O arquivo `docs/demo.gif` registra o formulário fictício → Protocolo → login → fila → Análise assistida → edição humana → Resolução → Swagger. Ele usa somente dados fictícios e não mostra chave, cookie, DevTools ou painel de segredos. As imagens-fonte sanitizadas estão versionadas em `docs/demo-frames/`; após instalar as dependências de desenvolvimento, remonte o GIF com `python scripts/build_demo_gif.py`.
