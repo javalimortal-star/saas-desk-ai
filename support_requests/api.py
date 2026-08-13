@@ -2,7 +2,7 @@ from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
 
 from support_requests.access import is_support_request_analyst
-from support_requests.models import SupportRequest
+from support_requests.models import SUGGESTED_RESPONSE_MAX_LENGTH, SupportRequest
 from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.submission import submit_support_request
 
@@ -64,7 +64,9 @@ class AnalystSupportRequestDetailView(generics.RetrieveAPIView):
 class HumanReviewSerializer(serializers.Serializer):
     category = serializers.ChoiceField(choices=SupportRequest.Category)
     priority = serializers.ChoiceField(choices=SupportRequest.Priority)
-    approved_response = serializers.CharField(max_length=4000, trim_whitespace=True)
+    approved_response = serializers.CharField(
+        max_length=SUGGESTED_RESPONSE_MAX_LENGTH, trim_whitespace=True
+    )
 
 
 class AnalystSupportRequestApproveView(generics.GenericAPIView):

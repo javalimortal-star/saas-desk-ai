@@ -1,6 +1,6 @@
 from django import forms
 
-from support_requests.models import SupportRequest
+from support_requests.models import SUGGESTED_RESPONSE_MAX_LENGTH, SupportRequest
 
 
 class SupportRequestForm(forms.ModelForm):
@@ -20,7 +20,7 @@ class HumanReviewForm(forms.Form):
     priority = forms.ChoiceField(choices=SupportRequest.Priority, label="Prioridade")
     approved_response = forms.CharField(
         label="Resposta aprovada",
-        max_length=4000,
+        max_length=SUGGESTED_RESPONSE_MAX_LENGTH,
         strip=True,
         widget=forms.Textarea,
     )

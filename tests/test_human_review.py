@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from support_requests.models import AnalysisAttempt, SupportRequest
+from support_requests.review import InvalidHumanReview, resolve_support_request
 from support_requests.tasks import analyze_support_request
 
 
@@ -217,3 +218,38 @@ def test_review_endpoints_require_an_analyst(client, support_request):
     assert api_response.status_code == 403
     support_request.refresh_from_db()
     assert support_request.stage == SupportRequest.Stage.AWAITING_REVIEW
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "invalid_data",
+    [
+        {
+            "category": "unknown",
+            "priority": SupportRequest.Priority.NORMAL,
+            "approved_response": "Ok",
+        },
+        {
+            "category": SupportRequest.Category.ACCESS,
+            "priority": "urgent",
+            "approved_response": "Ok",
+        },
+        {
+            "category": SupportRequest.Category.ACCESS,
+            "priority": SupportRequest.Priority.NORMAL,
+            "approved_response": "   ",
+        },
+        {
+            "category": SupportRequest.Category.ACCESS,
+            "priority": SupportRequest.Priority.NORMAL,
+            "approved_response": "x" * 4001,
+        },
+    ],
+)
+def test_domain_operation_rejects_invalid_human_review(support_request, invalid_data):
+    with pytest.raises(InvalidHumanReview):
+        resolve_support_request(support_request_id=support_request.pk, **invalid_data)
+
+    support_request.refresh_from_db()
+    assert support_request.stage == SupportRequest.Stage.AWAITING_REVIEW
+    assert support_request.approved_response == ""
