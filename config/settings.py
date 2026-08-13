@@ -67,3 +67,7 @@ LOGOUT_REDIRECT_URL = "support_requests:analyst-login"
 
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
 CELERY_TASK_IGNORE_RESULT = True
+
+ANALYSIS_PROVIDER = os.getenv("ANALYSIS_PROVIDER", "fake")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")

@@ -37,13 +37,29 @@ class SupportRequest(models.Model):
 
 
 class AnalysisAttemptManager(models.Manager):
-    def record_for(self, support_request, assisted_analysis):
+    def record_for(self, support_request, assisted_analysis, duration_ms=0):
         attempt = self.model(
             support_request=support_request,
+            outcome=self.model.Outcome.SUCCEEDED,
             summary=assisted_analysis.summary,
             recommended_category=assisted_analysis.category,
             recommended_priority=assisted_analysis.priority,
             suggested_response=assisted_analysis.suggested_response,
+            model=assisted_analysis.model,
+            duration_ms=duration_ms,
+            input_tokens=assisted_analysis.input_tokens,
+            output_tokens=assisted_analysis.output_tokens,
+        )
+        attempt.full_clean()
+        attempt.save()
+        return attempt
+
+    def record_failure(self, support_request, sanitized_error, duration_ms=0):
+        attempt = self.model(
+            support_request=support_request,
+            outcome=self.model.Outcome.FAILED,
+            sanitized_error=sanitized_error,
+            duration_ms=duration_ms,
         )
         attempt.full_clean()
         attempt.save()
@@ -51,15 +67,31 @@ class AnalysisAttemptManager(models.Manager):
 
 
 class AnalysisAttempt(models.Model):
+    class Outcome(models.TextChoices):
+        SUCCEEDED = "succeeded", "Concluída"
+        FAILED = "failed", "Falhou"
+
     support_request = models.ForeignKey(
         SupportRequest,
         on_delete=models.CASCADE,
         related_name="analysis_attempts",
     )
-    summary = models.TextField(max_length=ANALYSIS_SUMMARY_MAX_LENGTH)
-    recommended_category = models.CharField(max_length=32, choices=SupportRequest.Category)
-    recommended_priority = models.CharField(max_length=16, choices=SupportRequest.Priority)
-    suggested_response = models.TextField(max_length=SUGGESTED_RESPONSE_MAX_LENGTH)
+    outcome = models.CharField(max_length=16, choices=Outcome, default=Outcome.SUCCEEDED)
+    summary = models.TextField(max_length=ANALYSIS_SUMMARY_MAX_LENGTH, null=True, blank=True)
+    recommended_category = models.CharField(
+        max_length=32, choices=SupportRequest.Category, null=True, blank=True
+    )
+    recommended_priority = models.CharField(
+        max_length=16, choices=SupportRequest.Priority, null=True, blank=True
+    )
+    suggested_response = models.TextField(
+        max_length=SUGGESTED_RESPONSE_MAX_LENGTH, null=True, blank=True
+    )
+    model = models.CharField(max_length=160, blank=True)
+    duration_ms = models.PositiveIntegerField(null=True, blank=True)
+    input_tokens = models.PositiveIntegerField(null=True, blank=True)
+    output_tokens = models.PositiveIntegerField(null=True, blank=True)
+    sanitized_error = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = AnalysisAttemptManager()

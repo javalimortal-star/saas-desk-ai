@@ -7,7 +7,11 @@ from django.urls import reverse
 from support_requests.models import AnalysisAttempt, SupportRequest
 from support_requests.tasks import analyze_support_request
 import support_requests.tasks as analysis_tasks
-from support_requests.analysis import AssistedAnalysis, FakeAnalysisProvider
+from support_requests.analysis import (
+    AnalysisProviderFailure,
+    AssistedAnalysis,
+    FakeAnalysisProvider,
+)
 
 
 @pytest.mark.django_db
@@ -200,3 +204,42 @@ def test_oversized_assisted_analysis_is_rejected_before_it_is_recorded(monkeypat
     support_request.refresh_from_db()
     assert support_request.stage == SupportRequest.Stage.ANALYZING
     assert support_request.analysis_attempts.count() == 0
+
+
+@pytest.mark.django_db
+def test_provider_failure_is_sanitized_and_keeps_the_original_request(
+    client, django_user_model, monkeypatch
+):
+    support_request = SupportRequest.objects.create(
+        requester_name="Ana Silva",
+        requester_email="ana@example.com",
+        subject="Cobrança duplicada",
+        message="Minha assinatura foi cobrada duas vezes.",
+    )
+
+    class FailingProvider:
+        def analyze(self, current_request):
+            raise AnalysisProviderFailure("provider_unavailable")
+
+    monkeypatch.setattr(analysis_tasks, "get_analysis_provider", FailingProvider)
+
+    analyze_support_request.run(support_request.pk)
+
+    support_request.refresh_from_db()
+    attempt = support_request.analysis_attempts.get()
+    assert support_request.stage == SupportRequest.Stage.ANALYSIS_FAILED
+    assert support_request.message == "Minha assinatura foi cobrada duas vezes."
+    assert attempt.outcome == AnalysisAttempt.Outcome.FAILED
+    assert attempt.sanitized_error == "Provedor de análise indisponível."
+    assert "provider_unavailable" not in attempt.sanitized_error
+    assert attempt.summary is None
+
+    analyst = django_user_model.objects.create_user(username="analyst", password="password")
+    analyst.user_permissions.add(Permission.objects.get(codename="view_supportrequest"))
+    client.force_login(analyst)
+    response = client.get(
+        reverse("support_requests:analyst-detail", kwargs={"pk": support_request.pk})
+    )
+
+    assert attempt.sanitized_error in response.content.decode()
+    assert "provider_unavailable" not in response.content.decode()

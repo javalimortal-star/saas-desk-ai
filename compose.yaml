@@ -28,6 +28,9 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/0
+      ANALYSIS_PROVIDER: ${ANALYSIS_PROVIDER:-fake}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/free}
     depends_on:
       db:
         condition: service_healthy
@@ -56,6 +59,9 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       CELERY_BROKER_URL: redis://redis:6379/0
+      ANALYSIS_PROVIDER: ${ANALYSIS_PROVIDER:-fake}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/free}
     depends_on:
       db:
         condition: service_healthy
