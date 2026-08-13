@@ -80,6 +80,21 @@ def test_openapi_and_swagger_expose_real_contracts_and_analyst_security(client):
     assert set(retry_responses) >= {"202", "400", "409", "429"}
     assert "Retry-After" in public_responses["429"]["headers"]
     assert "Retry-After" in retry_responses["429"]["headers"]
+    validation_schema = public_responses["400"]["content"]["application/json"]["schema"]
+    invalid_response = client.post(
+        reverse("support_requests:api-create"),
+        {"requester_email": "invalid"},
+        content_type="application/json",
+    )
+    assert invalid_response.status_code == 400
+    assert set(invalid_response.json()) >= {
+        "requester_name",
+        "requester_email",
+        "subject",
+        "message",
+    }
+    assert validation_schema["type"] == "object"
+    assert validation_schema["additionalProperties"]["type"] == "array"
     assert docs_response.status_code == 200
     assert "swagger" in docs_response.content.decode().lower()
 

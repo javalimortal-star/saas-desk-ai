@@ -49,8 +49,13 @@ class ErrorDetailSerializer(serializers.Serializer):
     detail = serializers.CharField()
 
 
-class ValidationErrorSerializer(serializers.Serializer):
-    errors = serializers.DictField(required=False)
+VALIDATION_ERROR_SCHEMA = {
+    "type": "object",
+    "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string"},
+    },
+}
 
 
 class PublicSupportRequestCreateView(generics.CreateAPIView):
@@ -61,7 +66,7 @@ class PublicSupportRequestCreateView(generics.CreateAPIView):
     @extend_schema(
         responses={
             201: PublicSupportRequestSerializer,
-            400: ValidationErrorSerializer,
+            400: VALIDATION_ERROR_SCHEMA,
             429: ErrorDetailSerializer,
         },
         parameters=[
@@ -209,7 +214,7 @@ class AnalystSupportRequestApproveView(generics.GenericAPIView):
     @extend_schema(
         responses={
             200: HumanReviewResultSerializer,
-            400: ValidationErrorSerializer,
+            400: VALIDATION_ERROR_SCHEMA,
             409: ErrorDetailSerializer,
         }
     )
@@ -254,7 +259,7 @@ class AnalystSupportRequestRetryAnalysisView(generics.GenericAPIView):
     @extend_schema(
         responses={
             202: AnalysisRetryResultSerializer,
-            400: ValidationErrorSerializer,
+            400: VALIDATION_ERROR_SCHEMA,
             409: ErrorDetailSerializer,
             429: ErrorDetailSerializer,
         },
