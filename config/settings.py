@@ -77,3 +77,6 @@ PUBLIC_SUBMISSION_WINDOW_SECONDS = int(
     os.getenv("PUBLIC_SUBMISSION_WINDOW_SECONDS", "3600")
 )
 DEMO_RETENTION_DAYS = int(os.getenv("DEMO_RETENTION_DAYS", "7"))
+TRUSTED_PROXY_IPS = {
+    ip.strip() for ip in os.getenv("TRUSTED_PROXY_IPS", "").split(",") if ip.strip()
+}

@@ -16,6 +16,15 @@ class PublicSubmissionRateLimited(Exception):
         super().__init__("Muitos envios. Aguarde antes de enviar outra Solicitação.")
 
 
+def get_client_ip(request):
+    remote_address = request.META.get("REMOTE_ADDR", "unknown")
+    if remote_address not in settings.TRUSTED_PROXY_IPS:
+        return remote_address
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
+    client_address = forwarded_for.split(",", 1)[0].strip()
+    return client_address or remote_address
+
+
 def _hash_ip(client_ip):
     return hmac.new(
         settings.SECRET_KEY.encode(), client_ip.encode(), hashlib.sha256

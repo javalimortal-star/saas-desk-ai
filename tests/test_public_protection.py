@@ -72,6 +72,53 @@ def test_public_submissions_are_rate_limited_by_remote_address(client, monkeypat
 
 
 @pytest.mark.django_db
+@override_settings(
+    TRUSTED_PROXY_IPS={"10.0.0.10"},
+    PUBLIC_SUBMISSION_LIMIT=1,
+    PUBLIC_SUBMISSION_WINDOW_SECONDS=3600,
+)
+def test_rate_limit_uses_forwarded_ip_only_from_a_trusted_proxy(client, monkeypatch):
+    monkeypatch.setattr(
+        "support_requests.tasks.analyze_support_request.delay_on_commit", lambda request_id: None
+    )
+    url = reverse("support_requests:api-create")
+
+    first_proxy_client = client.post(
+        url,
+        VALID_REQUEST,
+        content_type="application/json",
+        REMOTE_ADDR="10.0.0.10",
+        HTTP_X_FORWARDED_FOR="203.0.113.20",
+    )
+    second_proxy_client = client.post(
+        url,
+        VALID_REQUEST,
+        content_type="application/json",
+        REMOTE_ADDR="10.0.0.10",
+        HTTP_X_FORWARDED_FOR="203.0.113.21",
+    )
+    forged_header = client.post(
+        url,
+        VALID_REQUEST,
+        content_type="application/json",
+        REMOTE_ADDR="198.51.100.5",
+        HTTP_X_FORWARDED_FOR="203.0.113.22",
+    )
+    forged_again = client.post(
+        url,
+        VALID_REQUEST,
+        content_type="application/json",
+        REMOTE_ADDR="198.51.100.5",
+        HTTP_X_FORWARDED_FOR="203.0.113.23",
+    )
+
+    assert first_proxy_client.status_code == 201
+    assert second_proxy_client.status_code == 201
+    assert forged_header.status_code == 201
+    assert forged_again.status_code == 429
+
+
+@pytest.mark.django_db
 def test_confirmation_never_exposes_private_data_and_protocol_is_not_queryable(client, monkeypatch):
     monkeypatch.setattr(
         "support_requests.tasks.analyze_support_request.delay_on_commit", lambda request_id: None
@@ -90,7 +137,10 @@ def test_confirmation_never_exposes_private_data_and_protocol_is_not_queryable(c
 @pytest.mark.django_db
 @override_settings(DEMO_RETENTION_DAYS=7)
 def test_retention_command_removes_only_expired_submissions_and_is_repeatable():
-    expired = SupportRequest.objects.create(**VALID_REQUEST)
+    expired = SupportRequest.objects.create(
+        **VALID_REQUEST,
+        stage=SupportRequest.Stage.ANALYSIS_FAILED,
+    )
     retained = SupportRequest.objects.create(
         **{**VALID_REQUEST, "requester_email": "recent@example.com"}
     )
@@ -103,3 +153,20 @@ def test_retention_command_removes_only_expired_submissions_and_is_repeatable():
 
     assert not SupportRequest.objects.filter(pk=expired.pk).exists()
     assert SupportRequest.objects.filter(pk=retained.pk).exists()
+
+
+@pytest.mark.django_db
+@override_settings(DEMO_RETENTION_DAYS=7)
+def test_retention_preserves_old_submissions_that_are_still_active():
+    received = SupportRequest.objects.create(**VALID_REQUEST)
+    analyzing = SupportRequest.objects.create(
+        **{**VALID_REQUEST, "requester_email": "analyzing@example.com"},
+        stage=SupportRequest.Stage.ANALYZING,
+    )
+    old = timezone.now() - timedelta(days=8)
+    SupportRequest.objects.filter(pk__in=[received.pk, analyzing.pk]).update(created_at=old)
+
+    call_command("purge_demo_data")
+
+    assert SupportRequest.objects.filter(pk=received.pk).exists()
+    assert SupportRequest.objects.filter(pk=analyzing.pk).exists()

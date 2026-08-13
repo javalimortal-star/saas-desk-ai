@@ -15,7 +15,7 @@ from support_requests.models import (
     SupportRequest,
 )
 from support_requests.review import InvalidResolutionTransition, resolve_support_request
-from support_requests.public_protection import PublicSubmissionRateLimited
+from support_requests.public_protection import PublicSubmissionRateLimited, get_client_ip
 from support_requests.submission import submit_support_request
 
 
@@ -34,7 +34,7 @@ class PublicSupportRequestSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context["request"]
         return submit_support_request(
-            client_ip=request.META.get("REMOTE_ADDR", "unknown"),
+            client_ip=get_client_ip(request),
             **validated_data,
         )
 

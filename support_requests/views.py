@@ -19,7 +19,7 @@ from support_requests.analysis_retry import (
 from support_requests.forms import AnalysisRetryForm, HumanReviewForm, SupportRequestForm
 from support_requests.models import AnalysisAttempt, SupportRequest
 from support_requests.review import InvalidResolutionTransition, resolve_support_request
-from support_requests.public_protection import PublicSubmissionRateLimited
+from support_requests.public_protection import PublicSubmissionRateLimited, get_client_ip
 from support_requests.submission import submit_support_request
 
 
@@ -33,7 +33,7 @@ class SupportRequestCreateView(CreateView):
     def form_valid(self, form):
         try:
             self.object = submit_support_request(
-                client_ip=self.request.META.get("REMOTE_ADDR", "unknown"),
+                client_ip=get_client_ip(self.request),
                 **form.cleaned_data,
             )
         except PublicSubmissionRateLimited as exc:
