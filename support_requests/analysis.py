@@ -99,5 +99,6 @@ def get_analysis_provider() -> AnalysisProvider:
         return OpenRouterAnalysisProvider(
             api_key=settings.OPENROUTER_API_KEY,
             model=settings.OPENROUTER_MODEL,
+            timeout_seconds=settings.OPENROUTER_TIMEOUT_SECONDS,
         )
     raise ImproperlyConfigured("ANALYSIS_PROVIDER deve ser 'fake' ou 'openrouter'.")

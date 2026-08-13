@@ -168,8 +168,10 @@ def test_render_blueprint_uses_free_eager_demo_and_keeps_api_key_secret():
     assert "dockerCommand: python -m config.render_start" in blueprint
     assert 'CELERY_TASK_ALWAYS_EAGER\n        value: "true"' in blueprint
     assert "OPENROUTER_API_KEY\n        sync: false" in blueprint
+    assert 'OPENROUTER_TIMEOUT_SECONDS\n        value: "20"' in blueprint
     assert "redis:" in compose
     assert "worker:" in compose
+    assert compose.count("OPENROUTER_TIMEOUT_SECONDS: ${OPENROUTER_TIMEOUT_SECONDS:-20}") == 2
 
 
 def test_render_entrypoint_prepares_database_then_starts_gunicorn(monkeypatch):
@@ -198,6 +200,13 @@ def test_render_entrypoint_prepares_database_then_starts_gunicorn(monkeypatch):
         (
             "execvp",
             "gunicorn",
-            ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:10000"],
+            [
+                "gunicorn",
+                "config.wsgi:application",
+                "--bind",
+                "0.0.0.0:10000",
+                "--timeout",
+                "60",
+            ],
         ),
     ]

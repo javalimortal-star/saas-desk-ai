@@ -13,7 +13,14 @@ def main():
     port = os.getenv("PORT", "8000")
     os.execvp(
         "gunicorn",
-        ["gunicorn", "config.wsgi:application", "--bind", f"0.0.0.0:{port}"],
+        [
+            "gunicorn",
+            "config.wsgi:application",
+            "--bind",
+            f"0.0.0.0:{port}",
+            "--timeout",
+            "60",
+        ],
     )
 
 

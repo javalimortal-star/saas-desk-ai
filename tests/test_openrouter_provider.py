@@ -1,4 +1,6 @@
 import json
+import signal
+import time
 
 import httpx2
 import pytest
@@ -99,6 +101,30 @@ def test_openrouter_provider_rejects_a_missing_key_without_network_access():
     assert failure.value.sanitized_message == "Chave da OpenRouter não configurada."
 
 
+@pytest.mark.skipif(not hasattr(signal, "SIGALRM"), reason="prazo total usa SIGALRM no Linux")
+def test_openrouter_provider_enforces_a_total_deadline_before_the_web_worker_timeout():
+    class SlowCompletions:
+        @staticmethod
+        def create(**_options):
+            time.sleep(0.2)
+
+    class SlowClient:
+        class chat:
+            completions = SlowCompletions()
+
+    provider = OpenRouterAnalysisProvider(
+        api_key="test-key-not-secret",
+        model="openrouter/free",
+        timeout_seconds=0.01,
+        client=SlowClient(),
+    )
+
+    with pytest.raises(AnalysisProviderFailure) as failure:
+        provider.analyze(SupportRequest(subject="Assunto", message="Mensagem"))
+
+    assert failure.value.code == AnalysisFailureCode.TIMEOUT
+
+
 @pytest.mark.parametrize(
     ("status_code", "expected_code"),
     [
@@ -176,12 +202,14 @@ def test_openrouter_provider_rejects_invalid_structured_output():
     ANALYSIS_PROVIDER="openrouter",
     OPENROUTER_API_KEY="",
     OPENROUTER_MODEL="openrouter/free",
+    OPENROUTER_TIMEOUT_SECONDS=20,
 )
 def test_provider_factory_selects_openrouter_from_server_configuration():
     provider = get_analysis_provider()
 
     assert isinstance(provider, OpenRouterAnalysisProvider)
     assert provider.model == "openrouter/free"
+    assert provider.timeout_seconds == 20
 
 
 def test_openrouter_provider_maps_transport_timeout():

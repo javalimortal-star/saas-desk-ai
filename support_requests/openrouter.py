@@ -1,5 +1,10 @@
 import json
+import signal
+from contextlib import contextmanager
+from threading import current_thread, main_thread
+from time import perf_counter
 
+import httpx2
 from openai import APIConnectionError, APIStatusError, APITimeoutError, OpenAI
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -21,10 +26,45 @@ class OpenRouterAnalysisPayload(BaseModel):
     suggested_response: str = Field(min_length=1, max_length=SUGGESTED_RESPONSE_MAX_LENGTH)
 
 
+class _AnalysisDeadlineExpired(Exception):
+    pass
+
+
+@contextmanager
+def _total_deadline(seconds):
+    if (
+        not hasattr(signal, "SIGALRM")
+        or not hasattr(signal, "ITIMER_REAL")
+        or current_thread() is not main_thread()
+    ):
+        yield
+        return
+
+    def expire_analysis(_signum, _frame):
+        raise _AnalysisDeadlineExpired
+
+    previous_handler = signal.signal(signal.SIGALRM, expire_analysis)
+    previous_timer = signal.setitimer(signal.ITIMER_REAL, seconds)
+    started_at = perf_counter()
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        if previous_timer[0] > 0:
+            elapsed = perf_counter() - started_at
+            signal.setitimer(
+                signal.ITIMER_REAL,
+                max(0.001, previous_timer[0] - elapsed),
+                previous_timer[1],
+            )
+
+
 class OpenRouterAnalysisProvider:
-    def __init__(self, *, api_key, model, client=None):
+    def __init__(self, *, api_key, model, timeout_seconds=20, client=None):
         self.api_key = api_key
         self.model = model
+        self.timeout_seconds = timeout_seconds
         self.client = client
 
     def analyze(self, support_request):
@@ -35,37 +75,44 @@ class OpenRouterAnalysisProvider:
                 api_key=self.api_key,
                 base_url="https://openrouter.ai/api/v1",
                 max_retries=0,
+                timeout=httpx2.Timeout(
+                    self.timeout_seconds,
+                    connect=5,
+                    write=5,
+                    pool=5,
+                ),
             )
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": (
-                            "Analise a solicitação de atendimento. Produza somente os campos "
-                            "definidos pelo esquema e não invente informações."
-                        ),
+            with _total_deadline(self.timeout_seconds):
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "Analise a solicitação de atendimento. Produza somente os campos "
+                                "definidos pelo esquema e não invente informações."
+                            ),
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                f"Assunto: {support_request.subject}\n"
+                                f"Mensagem: {support_request.message}"
+                            ),
+                        },
+                    ],
+                    response_format={
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "assisted_analysis",
+                            "strict": True,
+                            "schema": OpenRouterAnalysisPayload.model_json_schema(),
+                        },
                     },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Assunto: {support_request.subject}\n"
-                            f"Mensagem: {support_request.message}"
-                        ),
-                    },
-                ],
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "assisted_analysis",
-                        "strict": True,
-                        "schema": OpenRouterAnalysisPayload.model_json_schema(),
-                    },
-                },
-                extra_body={"provider": {"require_parameters": True}},
-            )
-        except APITimeoutError as error:
+                    extra_body={"provider": {"require_parameters": True}},
+                )
+        except (APITimeoutError, _AnalysisDeadlineExpired) as error:
             raise AnalysisProviderFailure(AnalysisFailureCode.TIMEOUT) from error
         except APIConnectionError as error:
             raise AnalysisProviderFailure(AnalysisFailureCode.PROVIDER_UNAVAILABLE) from error
