@@ -2,6 +2,7 @@ from rest_framework import generics, permissions, serializers
 
 from support_requests.access import is_support_request_analyst
 from support_requests.models import SupportRequest
+from support_requests.tasks import analyze_support_request
 
 
 class PublicSupportRequestSerializer(serializers.ModelSerializer):
@@ -15,6 +16,11 @@ class PublicSupportRequestSerializer(serializers.ModelSerializer):
             "message": {"write_only": True},
             "protocol": {"read_only": True},
         }
+
+    def create(self, validated_data):
+        support_request = super().create(validated_data)
+        analyze_support_request.delay_on_commit(support_request.pk)
+        return support_request
 
 
 class PublicSupportRequestCreateView(generics.CreateAPIView):

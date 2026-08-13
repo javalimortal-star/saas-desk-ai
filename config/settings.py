@@ -64,3 +64,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "support_requests:analyst-login"
 LOGIN_REDIRECT_URL = "support_requests:analyst-list"
 LOGOUT_REDIRECT_URL = "support_requests:analyst-login"
+
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://127.0.0.1:6379/0")
+CELERY_TASK_IGNORE_RESULT = True

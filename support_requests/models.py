@@ -6,6 +6,22 @@ from django.db import models
 class SupportRequest(models.Model):
     class Stage(models.TextChoices):
         RECEIVED = "received", "Recebida"
+        ANALYZING = "analyzing", "Em análise"
+        AWAITING_REVIEW = "awaiting_review", "Aguardando revisão"
+        ANALYSIS_FAILED = "analysis_failed", "Falha na análise"
+        RESOLVED = "resolved", "Resolvida"
+
+    class Category(models.TextChoices):
+        ACCESS = "access", "Acesso"
+        BILLING = "billing", "Cobrança"
+        TECHNICAL_PROBLEM = "technical_problem", "Problema técnico"
+        FEATURE_QUESTION = "feature_question", "Dúvida sobre funcionalidade"
+        OTHER = "other", "Outro"
+
+    class Priority(models.TextChoices):
+        LOW = "low", "Baixa"
+        NORMAL = "normal", "Normal"
+        HIGH = "high", "Alta"
 
     requester_name = models.CharField(max_length=120)
     requester_email = models.EmailField()
@@ -15,3 +31,15 @@ class SupportRequest(models.Model):
     stage = models.CharField(max_length=24, choices=Stage, default=Stage.RECEIVED)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
+class AnalysisAttempt(models.Model):
+    support_request = models.ForeignKey(
+        SupportRequest,
+        on_delete=models.CASCADE,
+        related_name="analysis_attempts",
+    )
+    summary = models.TextField(max_length=1000)
+    recommended_category = models.CharField(max_length=32, choices=SupportRequest.Category)
+    recommended_priority = models.CharField(max_length=16, choices=SupportRequest.Priority)
+    suggested_response = models.TextField(max_length=4000)
+    created_at = models.DateTimeField(auto_now_add=True)

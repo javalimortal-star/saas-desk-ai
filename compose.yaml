@@ -27,11 +27,40 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas_desk_ai}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "8000:8000"
+
+  redis:
+    image: redis:8-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  worker:
+    build: .
+    command: celery -A config worker --loglevel=info
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-unsafe-local-development-key}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-true}
+      POSTGRES_DB: ${POSTGRES_DB:-saas_desk_ai}
+      POSTGRES_USER: ${POSTGRES_USER:-saas_desk_ai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas_desk_ai}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      CELERY_BROKER_URL: redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   postgres_data:

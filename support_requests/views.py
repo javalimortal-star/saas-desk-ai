@@ -8,6 +8,7 @@ from django.views.generic import CreateView, DetailView, ListView, TemplateView
 from support_requests.access import ANALYST_PERMISSION, is_support_request_analyst
 from support_requests.forms import SupportRequestForm
 from support_requests.models import SupportRequest
+from support_requests.tasks import analyze_support_request
 
 
 class SupportRequestCreateView(CreateView):
@@ -16,6 +17,11 @@ class SupportRequestCreateView(CreateView):
 
     def get_success_url(self):
         return reverse("support_requests:submitted", kwargs={"protocol": self.object.protocol})
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        analyze_support_request.delay_on_commit(self.object.pk)
+        return response
 
 
 class SupportRequestSubmittedView(TemplateView):

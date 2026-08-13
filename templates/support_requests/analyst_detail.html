@@ -12,6 +12,19 @@
       <dt>Protocolo</dt><dd>{{ support_request.protocol }}</dd>
       <dt>Etapa</dt><dd>{{ support_request.get_stage_display }}</dd>
     </dl>
+    <section>
+      <h2>Análise assistida</h2>
+      {% for attempt in support_request.analysis_attempts.all %}
+        <dl>
+          <dt>Resumo</dt><dd>{{ attempt.summary }}</dd>
+          <dt>Categoria recomendada</dt><dd>{{ attempt.get_recommended_category_display }}</dd>
+          <dt>Prioridade recomendada</dt><dd>{{ attempt.get_recommended_priority_display }}</dd>
+          <dt>Resposta sugerida</dt><dd>{{ attempt.suggested_response }}</dd>
+        </dl>
+      {% empty %}
+        <p>A análise ainda não foi concluída.</p>
+      {% endfor %}
+    </section>
   </main>
 </body>
 </html>
