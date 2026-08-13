@@ -1,5 +1,6 @@
 import pytest
 from threading import Event, Thread
+from django.db import connections
 from django.contrib.auth.models import Permission
 from django.urls import reverse
 
@@ -126,6 +127,8 @@ def test_analysis_moves_through_a_committed_analyzing_stage(monkeypatch):
             analyze_support_request.run(support_request.pk)
         except Exception as error:
             task_errors.append(error)
+        finally:
+            connections.close_all()
 
     task_thread = Thread(target=run_task)
     task_thread.start()
@@ -164,6 +167,34 @@ def test_invalid_assisted_analysis_is_rejected_before_it_is_recorded(monkeypatch
     monkeypatch.setattr(analysis_tasks, "get_analysis_provider", InvalidProvider)
 
     with pytest.raises(ValueError, match="Categoria inválida"):
+        analyze_support_request.run(support_request.pk)
+
+    support_request.refresh_from_db()
+    assert support_request.stage == SupportRequest.Stage.ANALYZING
+    assert support_request.analysis_attempts.count() == 0
+
+
+@pytest.mark.django_db
+def test_oversized_assisted_analysis_is_rejected_before_it_is_recorded(monkeypatch):
+    support_request = SupportRequest.objects.create(
+        requester_name="Ana Silva",
+        requester_email="ana@example.com",
+        subject="Não consigo acessar minha conta",
+        message="A recuperação de senha não envia o e-mail.",
+    )
+
+    class OversizedProvider:
+        def analyze(self, current_request):
+            return AssistedAnalysis(
+                summary="x" * 1001,
+                category=SupportRequest.Category.ACCESS,
+                priority=SupportRequest.Priority.NORMAL,
+                suggested_response="Resposta sugerida.",
+            )
+
+    monkeypatch.setattr(analysis_tasks, "get_analysis_provider", OversizedProvider)
+
+    with pytest.raises(ValueError, match="Resumo excede o limite permitido"):
         analyze_support_request.run(support_request.pk)
 
     support_request.refresh_from_db()

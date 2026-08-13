@@ -3,6 +3,10 @@ import uuid
 from django.db import models
 
 
+ANALYSIS_SUMMARY_MAX_LENGTH = 1000
+SUGGESTED_RESPONSE_MAX_LENGTH = 4000
+
+
 class SupportRequest(models.Model):
     class Stage(models.TextChoices):
         RECEIVED = "received", "Recebida"
@@ -34,13 +38,16 @@ class SupportRequest(models.Model):
 
 class AnalysisAttemptManager(models.Manager):
     def record_for(self, support_request, assisted_analysis):
-        return self.create(
+        attempt = self.model(
             support_request=support_request,
             summary=assisted_analysis.summary,
             recommended_category=assisted_analysis.category,
             recommended_priority=assisted_analysis.priority,
             suggested_response=assisted_analysis.suggested_response,
         )
+        attempt.full_clean()
+        attempt.save()
+        return attempt
 
 
 class AnalysisAttempt(models.Model):
@@ -49,10 +56,10 @@ class AnalysisAttempt(models.Model):
         on_delete=models.CASCADE,
         related_name="analysis_attempts",
     )
-    summary = models.TextField(max_length=1000)
+    summary = models.TextField(max_length=ANALYSIS_SUMMARY_MAX_LENGTH)
     recommended_category = models.CharField(max_length=32, choices=SupportRequest.Category)
     recommended_priority = models.CharField(max_length=16, choices=SupportRequest.Priority)
-    suggested_response = models.TextField(max_length=4000)
+    suggested_response = models.TextField(max_length=SUGGESTED_RESPONSE_MAX_LENGTH)
     created_at = models.DateTimeField(auto_now_add=True)
 
     objects = AnalysisAttemptManager()
