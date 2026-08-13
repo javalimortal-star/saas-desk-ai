@@ -1,0 +1,29 @@
+[project]
+name = "saas-desk-ai"
+version = "0.1.0"
+description = "Human-reviewed AI-assisted support request triage"
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=6.0,<6.1",
+    "djangorestframework>=3.17,<3.18",
+    "psycopg[binary]>=3.2,<3.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4,<9",
+    "pytest-django>=4.11,<5",
+]
+
+[build-system]
+requires = ["setuptools>=80"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["config*", "support_requests*"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+

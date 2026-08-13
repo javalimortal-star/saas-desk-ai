@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>SaaS Desk AI</title></head>
+<body>
+  <main>
+    <h1>Como podemos ajudar?</h1>
+    <form method="post">
+      {% csrf_token %}
+      {% if form.errors %}
+        <div role="alert">
+          <strong>Corrija os erros abaixo.</strong>
+        </div>
+      {% endif %}
+      {{ form.as_p }}
+      <button type="submit">Enviar solicitação</button>
+    </form>
+  </main>
+</body>
+</html>
