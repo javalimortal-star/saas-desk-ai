@@ -23,7 +23,7 @@
             <dt>Categoria recomendada</dt><dd>{{ attempt.get_recommended_category_display }}</dd>
             <dt>Prioridade recomendada</dt><dd>{{ attempt.get_recommended_priority_display }}</dd>
             <dt>Resposta sugerida</dt><dd>{{ attempt.suggested_response }}</dd>
-            <dt>Modelo</dt><dd>{{ attempt.model }}</dd>
+            <dt>Modelo</dt><dd>{{ attempt.provider_model }}</dd>
           </dl>
         {% endif %}
       {% empty %}

@@ -5,7 +5,11 @@ import pytest
 from django.test import override_settings
 from openai import OpenAI
 
-from support_requests.analysis import AnalysisProviderFailure, get_analysis_provider
+from support_requests.analysis import (
+    AnalysisFailureCode,
+    AnalysisProviderFailure,
+    get_analysis_provider,
+)
 from support_requests.models import SupportRequest
 from support_requests.openrouter import OpenRouterAnalysisProvider
 
@@ -69,7 +73,7 @@ def test_openrouter_provider_requests_and_validates_structured_analysis():
     assert result.category == SupportRequest.Category.BILLING
     assert result.priority == SupportRequest.Priority.HIGH
     assert result.suggested_response == "Vamos verificar as duas cobranças."
-    assert result.model == "openai/gpt-oss-20b:free"
+    assert result.provider_model == "openai/gpt-oss-20b:free"
     assert result.input_tokens == 120
     assert result.output_tokens == 40
     assert captured_request["url"] == "https://openrouter.ai/api/v1/chat/completions"
@@ -91,7 +95,7 @@ def test_openrouter_provider_rejects_a_missing_key_without_network_access():
     with pytest.raises(AnalysisProviderFailure) as failure:
         provider.analyze(support_request)
 
-    assert failure.value.code == "missing_key"
+    assert failure.value.code == AnalysisFailureCode.MISSING_KEY
     assert failure.value.sanitized_message == "Chave da OpenRouter não configurada."
 
 
@@ -128,7 +132,7 @@ def test_openrouter_provider_maps_external_errors_to_sanitized_failures(
     with pytest.raises(AnalysisProviderFailure) as failure:
         provider.analyze(support_request)
 
-    assert failure.value.code == expected_code
+    assert failure.value.code == AnalysisFailureCode(expected_code)
     assert "secret upstream diagnostic" not in failure.value.sanitized_message
 
 
@@ -167,7 +171,7 @@ def test_openrouter_provider_rejects_invalid_structured_output():
     with pytest.raises(AnalysisProviderFailure) as failure:
         provider.analyze(SupportRequest(subject="Assunto", message="Mensagem"))
 
-    assert failure.value.code == "invalid_response"
+    assert failure.value.code == AnalysisFailureCode.INVALID_RESPONSE
 
 
 @override_settings(
@@ -199,7 +203,7 @@ def test_openrouter_provider_maps_transport_timeout():
     with pytest.raises(AnalysisProviderFailure) as failure:
         provider.analyze(SupportRequest(subject="Assunto", message="Mensagem"))
 
-    assert failure.value.code == "timeout"
+    assert failure.value.code == AnalysisFailureCode.TIMEOUT
     assert "secret timeout diagnostic" not in failure.value.sanitized_message
 
 
@@ -235,4 +239,4 @@ def test_openrouter_provider_maps_a_model_refusal():
     with pytest.raises(AnalysisProviderFailure) as failure:
         provider.analyze(SupportRequest(subject="Assunto", message="Mensagem"))
 
-    assert failure.value.code == "refused"
+    assert failure.value.code == AnalysisFailureCode.REFUSED

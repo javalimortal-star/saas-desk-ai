@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='analysisattempt',
-            name='model',
+            name='provider_model',
             field=models.CharField(blank=True, max_length=160),
         ),
         migrations.AddField(

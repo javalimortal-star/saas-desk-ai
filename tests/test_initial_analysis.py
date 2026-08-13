@@ -1,13 +1,17 @@
 import pytest
 from threading import Event, Thread
+import httpx2
+from openai import OpenAI
 from django.db import connections
 from django.contrib.auth.models import Permission
 from django.urls import reverse
 
 from support_requests.models import AnalysisAttempt, SupportRequest
+from support_requests.openrouter import OpenRouterAnalysisProvider
 from support_requests.tasks import analyze_support_request
 import support_requests.tasks as analysis_tasks
 from support_requests.analysis import (
+    AnalysisFailureCode,
     AnalysisProviderFailure,
     AssistedAnalysis,
     FakeAnalysisProvider,
@@ -219,7 +223,7 @@ def test_provider_failure_is_sanitized_and_keeps_the_original_request(
 
     class FailingProvider:
         def analyze(self, current_request):
-            raise AnalysisProviderFailure("provider_unavailable")
+            raise AnalysisProviderFailure(AnalysisFailureCode.PROVIDER_UNAVAILABLE)
 
     monkeypatch.setattr(analysis_tasks, "get_analysis_provider", FailingProvider)
 
@@ -243,3 +247,45 @@ def test_provider_failure_is_sanitized_and_keeps_the_original_request(
 
     assert attempt.sanitized_error in response.content.decode()
     assert "provider_unavailable" not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_malformed_openrouter_success_becomes_a_sanitized_failed_attempt(monkeypatch):
+    def handle_request(request):
+        return httpx2.Response(
+            200,
+            json={
+                "id": "generation-malformed",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "free/model",
+                "choices": [],
+                "external_diagnostic": "secret upstream content",
+            },
+        )
+
+    client = OpenAI(
+        api_key="test-key-not-secret",
+        base_url="https://openrouter.ai/api/v1",
+        max_retries=0,
+        http_client=httpx2.Client(transport=httpx2.MockTransport(handle_request)),
+    )
+    provider = OpenRouterAnalysisProvider(
+        api_key="test-key-not-secret", model="openrouter/free", client=client
+    )
+    monkeypatch.setattr(analysis_tasks, "get_analysis_provider", lambda: provider)
+    support_request = SupportRequest.objects.create(
+        requester_name="Ana Silva",
+        requester_email="ana@example.com",
+        subject="Cobrança duplicada",
+        message="Minha assinatura foi cobrada duas vezes.",
+    )
+
+    analyze_support_request.run(support_request.pk)
+
+    support_request.refresh_from_db()
+    attempt = support_request.analysis_attempts.get()
+    assert support_request.stage == SupportRequest.Stage.ANALYSIS_FAILED
+    assert attempt.outcome == AnalysisAttempt.Outcome.FAILED
+    assert attempt.sanitized_error == "O provedor retornou uma análise inválida."
+    assert "secret upstream content" not in attempt.sanitized_error

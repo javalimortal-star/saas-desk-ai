@@ -7,6 +7,20 @@ ANALYSIS_SUMMARY_MAX_LENGTH = 1000
 SUGGESTED_RESPONSE_MAX_LENGTH = 4000
 
 
+class SupportRequestCategory(models.TextChoices):
+    ACCESS = "access", "Acesso"
+    BILLING = "billing", "Cobrança"
+    TECHNICAL_PROBLEM = "technical_problem", "Problema técnico"
+    FEATURE_QUESTION = "feature_question", "Dúvida sobre funcionalidade"
+    OTHER = "other", "Outro"
+
+
+class SupportRequestPriority(models.TextChoices):
+    LOW = "low", "Baixa"
+    NORMAL = "normal", "Normal"
+    HIGH = "high", "Alta"
+
+
 class SupportRequest(models.Model):
     class Stage(models.TextChoices):
         RECEIVED = "received", "Recebida"
@@ -15,17 +29,8 @@ class SupportRequest(models.Model):
         ANALYSIS_FAILED = "analysis_failed", "Falha na análise"
         RESOLVED = "resolved", "Resolvida"
 
-    class Category(models.TextChoices):
-        ACCESS = "access", "Acesso"
-        BILLING = "billing", "Cobrança"
-        TECHNICAL_PROBLEM = "technical_problem", "Problema técnico"
-        FEATURE_QUESTION = "feature_question", "Dúvida sobre funcionalidade"
-        OTHER = "other", "Outro"
-
-    class Priority(models.TextChoices):
-        LOW = "low", "Baixa"
-        NORMAL = "normal", "Normal"
-        HIGH = "high", "Alta"
+    Category = SupportRequestCategory
+    Priority = SupportRequestPriority
 
     requester_name = models.CharField(max_length=120)
     requester_email = models.EmailField()
@@ -45,7 +50,7 @@ class AnalysisAttemptManager(models.Manager):
             recommended_category=assisted_analysis.category,
             recommended_priority=assisted_analysis.priority,
             suggested_response=assisted_analysis.suggested_response,
-            model=assisted_analysis.model,
+            provider_model=assisted_analysis.provider_model,
             duration_ms=duration_ms,
             input_tokens=assisted_analysis.input_tokens,
             output_tokens=assisted_analysis.output_tokens,
@@ -87,7 +92,7 @@ class AnalysisAttempt(models.Model):
     suggested_response = models.TextField(
         max_length=SUGGESTED_RESPONSE_MAX_LENGTH, null=True, blank=True
     )
-    model = models.CharField(max_length=160, blank=True)
+    provider_model = models.CharField(max_length=160, blank=True)
     duration_ms = models.PositiveIntegerField(null=True, blank=True)
     input_tokens = models.PositiveIntegerField(null=True, blank=True)
     output_tokens = models.PositiveIntegerField(null=True, blank=True)

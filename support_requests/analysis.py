@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Protocol
 
 from django.conf import settings
@@ -11,24 +12,36 @@ from support_requests.models import (
 )
 
 
-SANITIZED_PROVIDER_ERRORS = {
-    "missing_key": "Chave da OpenRouter não configurada.",
-    "quota_unavailable": "Cota do provedor indisponível.",
-    "timeout": "O provedor excedeu o tempo limite.",
-    "refused": "O provedor recusou a análise.",
-    "provider_unavailable": "Provedor de análise indisponível.",
-    "invalid_response": "O provedor retornou uma análise inválida.",
-}
+class AnalysisFailureCode(StrEnum):
+    MISSING_KEY = "missing_key"
+    QUOTA_UNAVAILABLE = "quota_unavailable"
+    TIMEOUT = "timeout"
+    REFUSED = "refused"
+    PROVIDER_UNAVAILABLE = "provider_unavailable"
+    INVALID_RESPONSE = "invalid_response"
+
+    @property
+    def sanitized_message(self):
+        return {
+            self.MISSING_KEY: "Chave da OpenRouter não configurada.",
+            self.QUOTA_UNAVAILABLE: "Cota do provedor indisponível.",
+            self.TIMEOUT: "O provedor excedeu o tempo limite.",
+            self.REFUSED: "O provedor recusou a análise.",
+            self.PROVIDER_UNAVAILABLE: "Provedor de análise indisponível.",
+            self.INVALID_RESPONSE: "O provedor retornou uma análise inválida.",
+        }[self]
 
 
 class AnalysisProviderFailure(Exception):
     def __init__(self, code):
+        if not isinstance(code, AnalysisFailureCode):
+            raise TypeError("code deve ser AnalysisFailureCode")
         self.code = code
-        super().__init__(SANITIZED_PROVIDER_ERRORS[code])
+        super().__init__(code.sanitized_message)
 
     @property
     def sanitized_message(self):
-        return SANITIZED_PROVIDER_ERRORS[self.code]
+        return self.code.sanitized_message
 
 
 @dataclass(frozen=True)
@@ -37,7 +50,7 @@ class AssistedAnalysis:
     category: str
     priority: str
     suggested_response: str
-    model: str = "fake/deterministic"
+    provider_model: str = "fake/deterministic"
     input_tokens: int | None = None
     output_tokens: int | None = None
 
