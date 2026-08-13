@@ -1,7 +1,7 @@
 import hashlib
 import hmac
+from datetime import UTC, datetime, timedelta
 from ipaddress import ip_address
-from datetime import datetime, timedelta, timezone as datetime_timezone
 from math import ceil
 
 from django.conf import settings
@@ -39,9 +39,7 @@ def get_client_ip(request):
 
 
 def _hash_ip(client_ip):
-    return hmac.new(
-        settings.SECRET_KEY.encode(), client_ip.encode(), hashlib.sha256
-    ).hexdigest()
+    return hmac.new(settings.SECRET_KEY.encode(), client_ip.encode(), hashlib.sha256).hexdigest()
 
 
 @transaction.atomic
@@ -49,7 +47,7 @@ def consume_public_submission(client_ip):
     window_seconds = settings.PUBLIC_SUBMISSION_WINDOW_SECONDS
     now = timezone.now()
     window_timestamp = int(now.timestamp()) // window_seconds * window_seconds
-    window_start = datetime.fromtimestamp(window_timestamp, tz=datetime_timezone.utc)
+    window_start = datetime.fromtimestamp(window_timestamp, tz=UTC)
     bucket, _ = PublicSubmissionBucket.objects.get_or_create(
         ip_hash=_hash_ip(client_ip),
         window_started_at=window_start,

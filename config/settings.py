@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
 
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-local-development-key")
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() == "true"
-ALLOWED_HOSTS = [host for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host]
+ALLOWED_HOSTS = [
+    host for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",") if host
+]
 
 INSTALLED_APPS = [
     "django.contrib.auth",
@@ -15,8 +16,18 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "drf_spectacular",
     "support_requests",
 ]
+REST_FRAMEWORK = {"DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema"}
+SPECTACULAR_SETTINGS = {
+    "TITLE": "SaaS Desk AI API",
+    "DESCRIPTION": "API de Solicitações e operações privadas do Analista.",
+    "VERSION": "1.0.0",
+    "ENUM_NAME_OVERRIDES": {
+        "SupportRequestStage": "support_requests.models.SupportRequest.Stage",
+    },
+}
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -73,10 +84,9 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 ANALYSIS_RETRY_COOLDOWN_SECONDS = int(os.getenv("ANALYSIS_RETRY_COOLDOWN_SECONDS", "60"))
 PUBLIC_SUBMISSION_LIMIT = int(os.getenv("PUBLIC_SUBMISSION_LIMIT", "5"))
-PUBLIC_SUBMISSION_WINDOW_SECONDS = int(
-    os.getenv("PUBLIC_SUBMISSION_WINDOW_SECONDS", "3600")
-)
+PUBLIC_SUBMISSION_WINDOW_SECONDS = int(os.getenv("PUBLIC_SUBMISSION_WINDOW_SECONDS", "3600"))
 DEMO_RETENTION_DAYS = int(os.getenv("DEMO_RETENTION_DAYS", "7"))
+DEMO_ANALYST_PASSWORD = os.getenv("DEMO_ANALYST_PASSWORD", "demo-password")
 TRUSTED_PROXY_IPS = {
     ip.strip() for ip in os.getenv("TRUSTED_PROXY_IPS", "").split(",") if ip.strip()
 }

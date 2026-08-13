@@ -2,22 +2,29 @@ from django.urls import path
 
 from support_requests.api import (
     AnalystSupportRequestApproveView as AnalystSupportRequestApiApproveView,
-    AnalystSupportRequestRetryAnalysisView as AnalystSupportRequestApiRetryAnalysisView,
+)
+from support_requests.api import (
     AnalystSupportRequestDetailView as AnalystSupportRequestApiDetailView,
+)
+from support_requests.api import (
     AnalystSupportRequestListView as AnalystSupportRequestApiListView,
+)
+from support_requests.api import (
+    AnalystSupportRequestRetryAnalysisView as AnalystSupportRequestApiRetryAnalysisView,
+)
+from support_requests.api import (
     PublicSupportRequestCreateView,
 )
 from support_requests.views import (
     AnalystLoginView,
     AnalystLogoutView,
+    AnalystSupportRequestApproveView,
     AnalystSupportRequestDetailView,
     AnalystSupportRequestListView,
-    AnalystSupportRequestApproveView,
     AnalystSupportRequestRetryAnalysisView,
     SupportRequestCreateView,
     SupportRequestSubmittedView,
 )
-
 
 app_name = "support_requests"
 urlpatterns = [

@@ -36,7 +36,8 @@ def resolve_support_request(*, support_request_id, category, priority, approved_
     support_request = SupportRequest.objects.select_for_update().get(pk=support_request_id)
     if support_request.stage not in RESOLVABLE_STAGES:
         raise InvalidResolutionTransition(
-            f'A Solicitação na etapa "{support_request.get_stage_display()}" não pode ser resolvida.'
+            "A Solicitação na etapa "
+            f'"{support_request.get_stage_display()}" não pode ser resolvida.'
         )
 
     support_request.final_category = category

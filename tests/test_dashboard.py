@@ -65,9 +65,7 @@ def dashboard_requests():
         suggested_response="Resposta anterior.",
         provider_model="test/model",
     )
-    unclassified = create_request(
-        subject="received", stage=SupportRequest.Stage.RECEIVED
-    )
+    unclassified = create_request(subject="received", stage=SupportRequest.Stage.RECEIVED)
     return assisted, resolved, unclassified
 
 
@@ -118,9 +116,7 @@ def test_dashboard_filters_can_be_combined_and_use_final_values(
 
     assert response.status_code == 200
     if surface == "html":
-        assert [item.subject for item in response.context["support_requests"]] == [
-            "resolved"
-        ]
+        assert [item.subject for item in response.context["support_requests"]] == ["resolved"]
         assert response.context["filter_form"].cleaned_data == {
             "stage": SupportRequest.Stage.RESOLVED,
             "category": SupportRequest.Category.BILLING,

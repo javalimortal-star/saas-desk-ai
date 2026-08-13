@@ -103,15 +103,17 @@ def test_analyst_can_list_and_detail_requests_through_the_api(client, analyst, s
     assert list_payload[0].pop("effective_category_label") == "—"
     assert list_payload[0].pop("effective_priority") is None
     assert list_payload[0].pop("effective_priority_label") == "—"
-    assert list_payload == [{
-        "id": support_request.pk,
-        "protocol": str(support_request.protocol),
-        "requester_name": support_request.requester_name,
-        "requester_email": support_request.requester_email,
-        "subject": support_request.subject,
-        "message": support_request.message,
-        "stage": SupportRequest.Stage.RECEIVED,
-    }]
+    assert list_payload == [
+        {
+            "id": support_request.pk,
+            "protocol": str(support_request.protocol),
+            "requester_name": support_request.requester_name,
+            "requester_email": support_request.requester_email,
+            "subject": support_request.subject,
+            "message": support_request.message,
+            "stage": SupportRequest.Stage.RECEIVED,
+        }
+    ]
     assert created_at == support_request.created_at
     assert detail_response.status_code == 200
     detail_payload = detail_response.json()

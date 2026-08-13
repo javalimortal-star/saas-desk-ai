@@ -7,7 +7,6 @@ from support_requests.analysis import AnalysisFailureCode, AnalysisProviderFailu
 from support_requests.models import (
     ANALYSIS_SUMMARY_MAX_LENGTH,
     SUGGESTED_RESPONSE_MAX_LENGTH,
-    SupportRequest,
     SupportRequestCategory,
     SupportRequestPriority,
 )
@@ -77,9 +76,7 @@ class OpenRouterAnalysisProvider:
                 408: AnalysisFailureCode.TIMEOUT,
                 429: AnalysisFailureCode.QUOTA_UNAVAILABLE,
             }
-            code = status_mapping.get(
-                error.status_code, AnalysisFailureCode.PROVIDER_UNAVAILABLE
-            )
+            code = status_mapping.get(error.status_code, AnalysisFailureCode.PROVIDER_UNAVAILABLE)
             raise AnalysisProviderFailure(code) from error
 
         try:

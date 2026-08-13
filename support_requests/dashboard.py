@@ -41,9 +41,7 @@ def effective_support_requests():
 
 
 def filter_support_requests(queryset, cleaned_filters):
-    filters = {
-        field: value for field, value in cleaned_filters.items() if value
-    }
+    filters = {field: value for field, value in cleaned_filters.items() if value}
     category = filters.pop("category", None)
     priority = filters.pop("priority", None)
     if category:
@@ -54,9 +52,7 @@ def filter_support_requests(queryset, cleaned_filters):
 
 
 def dashboard_totals(queryset):
-    stage_counts = dict(
-        queryset.values_list("stage").annotate(total=Count("pk")).order_by()
-    )
+    stage_counts = dict(queryset.values_list("stage").annotate(total=Count("pk")).order_by())
     category_counts = dict(
         queryset.exclude(effective_category__isnull=True)
         .values_list("effective_category")

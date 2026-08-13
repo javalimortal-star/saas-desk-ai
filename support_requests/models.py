@@ -2,7 +2,6 @@ import uuid
 
 from django.db import models
 
-
 ANALYSIS_SUMMARY_MAX_LENGTH = 1000
 SUGGESTED_RESPONSE_MAX_LENGTH = 4000
 
@@ -87,9 +86,7 @@ class AnalysisAttemptManager(models.Manager):
         attempt.save()
         return attempt
 
-    def record_failure(
-        self, support_request, sanitized_error, duration_ms=0, provider_model=""
-    ):
+    def record_failure(self, support_request, sanitized_error, duration_ms=0, provider_model=""):
         attempt = self.model(
             support_request=support_request,
             outcome=self.model.Outcome.FAILED,

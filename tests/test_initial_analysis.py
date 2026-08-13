@@ -1,14 +1,12 @@
-import pytest
 from threading import Event, Thread
-import httpx2
-from openai import OpenAI
-from django.db import connections
-from django.contrib.auth.models import Permission
-from django.urls import reverse
 
-from support_requests.models import AnalysisAttempt, SupportRequest
-from support_requests.openrouter import OpenRouterAnalysisProvider
-from support_requests.tasks import analyze_support_request
+import httpx2
+import pytest
+from django.contrib.auth.models import Permission
+from django.db import connections
+from django.urls import reverse
+from openai import OpenAI
+
 import support_requests.tasks as analysis_tasks
 from support_requests.analysis import (
     AnalysisFailureCode,
@@ -16,6 +14,9 @@ from support_requests.analysis import (
     AssistedAnalysis,
     FakeAnalysisProvider,
 )
+from support_requests.models import AnalysisAttempt, SupportRequest
+from support_requests.openrouter import OpenRouterAnalysisProvider
+from support_requests.tasks import analyze_support_request
 
 
 @pytest.mark.django_db

@@ -109,9 +109,7 @@ def test_openrouter_provider_rejects_a_missing_key_without_network_access():
         (503, "provider_unavailable"),
     ],
 )
-def test_openrouter_provider_maps_external_errors_to_sanitized_failures(
-    status_code, expected_code
-):
+def test_openrouter_provider_maps_external_errors_to_sanitized_failures(status_code, expected_code):
     def handle_request(request):
         return httpx2.Response(
             status_code,

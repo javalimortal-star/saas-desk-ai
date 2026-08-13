@@ -1,26 +1,27 @@
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, permissions, serializers
 from rest_framework.response import Response
 
 from support_requests.access import is_support_request_analyst
-from support_requests.dashboard import (
-    DashboardFilterForm,
-    effective_support_requests,
-    filter_support_requests,
-)
 from support_requests.analysis_retry import (
     AnalysisRetryRateLimited,
     IdempotencyKeyConflict,
     InvalidAnalysisRetryTransition,
     request_analysis_retry,
 )
+from support_requests.dashboard import (
+    DashboardFilterForm,
+    effective_support_requests,
+    filter_support_requests,
+)
 from support_requests.models import (
     SUGGESTED_RESPONSE_MAX_LENGTH,
     AnalysisAttempt,
     SupportRequest,
 )
-from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.public_protection import PublicSubmissionRateLimited, get_client_ip
+from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.submission import submit_support_request
 
 
@@ -94,10 +95,10 @@ class AnalystSupportRequestListSerializer(AnalystSupportRequestSerializer):
             "effective_priority_label",
         )
 
-    def get_effective_category_label(self, obj):
+    def get_effective_category_label(self, obj) -> str:
         return obj.effective_category_display
 
-    def get_effective_priority_label(self, obj):
+    def get_effective_priority_label(self, obj) -> str:
         return obj.effective_priority_display
 
 
@@ -131,6 +132,16 @@ class AnalystSupportRequestListView(generics.ListAPIView):
     permission_classes = [IsSupportRequestAnalyst]
     serializer_class = AnalystSupportRequestListSerializer
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("stage", enum=SupportRequest.Stage.values),
+            OpenApiParameter("category", enum=SupportRequest.Category.values),
+            OpenApiParameter("priority", enum=SupportRequest.Priority.values),
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         form = DashboardFilterForm(self.request.query_params)
         if not form.is_valid():
@@ -154,11 +165,21 @@ class HumanReviewSerializer(serializers.Serializer):
     )
 
 
+class HumanReviewResultSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    stage = serializers.ChoiceField(choices=SupportRequest.Stage)
+    category = serializers.ChoiceField(choices=SupportRequest.Category)
+    priority = serializers.ChoiceField(choices=SupportRequest.Priority)
+    approved_response = serializers.CharField()
+    resolved_at = serializers.DateTimeField()
+
+
 class AnalystSupportRequestApproveView(generics.GenericAPIView):
     permission_classes = [IsSupportRequestAnalyst]
     queryset = SupportRequest.objects.all()
     serializer_class = HumanReviewSerializer
 
+    @extend_schema(responses=HumanReviewResultSerializer)
     def post(self, request, pk):
         self.get_object()
         serializer = self.get_serializer(data=request.data)
@@ -186,11 +207,18 @@ class AnalysisRetrySerializer(serializers.Serializer):
     idempotency_key = serializers.UUIDField()
 
 
+class AnalysisRetryResultSerializer(serializers.Serializer):
+    idempotency_key = serializers.UUIDField()
+    status = serializers.CharField()
+    created = serializers.BooleanField()
+
+
 class AnalystSupportRequestRetryAnalysisView(generics.GenericAPIView):
     permission_classes = [IsSupportRequestAnalyst]
     queryset = SupportRequest.objects.all()
     serializer_class = AnalysisRetrySerializer
 
+    @extend_schema(responses={202: AnalysisRetryResultSerializer})
     def post(self, request, pk):
         get_object_or_404(self.get_queryset(), pk=pk)
         serializer = self.get_serializer(data=request.data)

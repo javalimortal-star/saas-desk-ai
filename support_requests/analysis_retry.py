@@ -6,7 +6,6 @@ from django.utils import timezone
 
 from support_requests.models import AnalysisRun, SupportRequest
 
-
 RETRYABLE_STAGES = {
     SupportRequest.Stage.AWAITING_REVIEW,
     SupportRequest.Stage.ANALYSIS_FAILED,
@@ -52,9 +51,7 @@ def request_analysis_retry(*, support_request_id, idempotency_key):
         return run, False
 
     cooldown_seconds = settings.ANALYSIS_RETRY_COOLDOWN_SECONDS
-    latest_run = (
-        support_request.analysis_runs.exclude(pk=run.pk).order_by("-created_at").first()
-    )
+    latest_run = support_request.analysis_runs.exclude(pk=run.pk).order_by("-created_at").first()
     if latest_run:
         elapsed = (timezone.now() - latest_run.created_at).total_seconds()
         if elapsed < cooldown_seconds:

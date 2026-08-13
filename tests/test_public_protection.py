@@ -8,7 +8,6 @@ from django.utils import timezone
 
 from support_requests.models import PublicSubmissionBucket, SupportRequest
 
-
 VALID_REQUEST = {
     "requester_name": "Pessoa Fictícia",
     "requester_email": "pessoa@example.com",
@@ -35,9 +34,7 @@ def test_public_form_explains_demo_data_and_exposes_all_length_limits(client):
 @pytest.mark.parametrize("surface", ["form", "api"])
 def test_public_surfaces_reject_values_over_the_documented_limits(client, surface):
     data = {**VALID_REQUEST, "requester_name": "x" * 121}
-    url = reverse(
-        "support_requests:submit" if surface == "form" else "support_requests:api-create"
-    )
+    url = reverse("support_requests:submit" if surface == "form" else "support_requests:api-create")
 
     request_options = {"content_type": "application/json"} if surface == "api" else {}
     response = client.post(url, data, **request_options)
@@ -53,13 +50,15 @@ def test_public_submissions_are_rate_limited_by_remote_address(client, monkeypat
     monkeypatch.setattr(
         "support_requests.tasks.analyze_support_request.delay_on_commit", lambda request_id: None
     )
-    url = reverse(
-        "support_requests:submit" if surface == "form" else "support_requests:api-create"
-    )
+    url = reverse("support_requests:submit" if surface == "form" else "support_requests:api-create")
     request_options = {"content_type": "application/json"} if surface == "api" else {}
 
-    assert client.post(url, VALID_REQUEST, REMOTE_ADDR="203.0.113.10", **request_options).status_code in (201, 302)
-    assert client.post(url, VALID_REQUEST, REMOTE_ADDR="203.0.113.10", **request_options).status_code in (201, 302)
+    assert client.post(
+        url, VALID_REQUEST, REMOTE_ADDR="203.0.113.10", **request_options
+    ).status_code in (201, 302)
+    assert client.post(
+        url, VALID_REQUEST, REMOTE_ADDR="203.0.113.10", **request_options
+    ).status_code in (201, 302)
     limited = client.post(url, VALID_REQUEST, REMOTE_ADDR="203.0.113.10", **request_options)
     other_ip = client.post(url, VALID_REQUEST, REMOTE_ADDR="203.0.113.11", **request_options)
 
@@ -68,7 +67,9 @@ def test_public_submissions_are_rate_limited_by_remote_address(client, monkeypat
     assert int(limited.headers["Retry-After"]) > 0
     assert other_ip.status_code in (201, 302)
     assert PublicSubmissionBucket.objects.count() == 2
-    assert not PublicSubmissionBucket.objects.filter(ip_hash__in=["203.0.113.10", "203.0.113.11"]).exists()
+    assert not PublicSubmissionBucket.objects.filter(
+        ip_hash__in=["203.0.113.10", "203.0.113.11"]
+    ).exists()
 
 
 @pytest.mark.django_db
@@ -124,9 +125,7 @@ def test_rate_limit_uses_forwarded_ip_only_from_a_trusted_proxy(client, monkeypa
     PUBLIC_SUBMISSION_LIMIT=1,
     PUBLIC_SUBMISSION_WINDOW_SECONDS=3600,
 )
-def test_rate_limit_ignores_a_spoofed_hop_before_the_ip_appended_by_proxy(
-    client, monkeypatch
-):
+def test_rate_limit_ignores_a_spoofed_hop_before_the_ip_appended_by_proxy(client, monkeypatch):
     monkeypatch.setattr(
         "support_requests.tasks.analyze_support_request.delay_on_commit", lambda request_id: None
     )
@@ -166,7 +165,9 @@ def test_confirmation_never_exposes_private_data_and_protocol_is_not_queryable(c
     for private_value in VALID_REQUEST.values():
         assert private_value not in content
     with pytest.raises(NoReverseMatch):
-        reverse("support_requests:submitted", kwargs={"protocol": SupportRequest.objects.get().protocol})
+        reverse(
+            "support_requests:submitted", kwargs={"protocol": SupportRequest.objects.get().protocol}
+        )
 
 
 @pytest.mark.django_db

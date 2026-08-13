@@ -16,16 +16,16 @@ from support_requests.analysis_retry import (
     InvalidAnalysisRetryTransition,
     request_analysis_retry,
 )
-from support_requests.forms import AnalysisRetryForm, HumanReviewForm, SupportRequestForm
 from support_requests.dashboard import (
     DashboardFilterForm,
     dashboard_totals,
     effective_support_requests,
     filter_support_requests,
 )
+from support_requests.forms import AnalysisRetryForm, HumanReviewForm, SupportRequestForm
 from support_requests.models import AnalysisAttempt, SupportRequest
-from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.public_protection import PublicSubmissionRateLimited, get_client_ip
+from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.submission import submit_support_request
 
 
@@ -86,6 +86,7 @@ class AnalystSupportRequestListView(AnalystPermissionRequiredMixin, ListView):
     model = SupportRequest
     template_name = "support_requests/analyst_list.html"
     context_object_name = "support_requests"
+
     def get_queryset(self):
         self.filter_form = DashboardFilterForm(self.request.GET)
         queryset = effective_support_requests().order_by("-created_at")
@@ -143,9 +144,7 @@ class AnalystSupportRequestDetailView(AnalystPermissionRequiredMixin, DetailView
                 "approved_response": latest_success.suggested_response,
             }
         context["review_form"] = HumanReviewForm(initial=initial)
-        context["analysis_retry_form"] = AnalysisRetryForm(
-            initial={"idempotency_key": uuid4()}
-        )
+        context["analysis_retry_form"] = AnalysisRetryForm(initial={"idempotency_key": uuid4()})
         return context
 
 

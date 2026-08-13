@@ -51,14 +51,14 @@ def analyze_support_request(support_request_id):
 @shared_task
 def retry_support_request_analysis(analysis_run_id):
     with transaction.atomic():
-        run = AnalysisRun.objects.select_for_update().select_related("support_request").get(
-            pk=analysis_run_id
+        run = (
+            AnalysisRun.objects.select_for_update()
+            .select_related("support_request")
+            .get(pk=analysis_run_id)
         )
         if run.status != AnalysisRun.Status.PENDING:
             return
-        support_request = SupportRequest.objects.select_for_update().get(
-            pk=run.support_request_id
-        )
+        support_request = SupportRequest.objects.select_for_update().get(pk=run.support_request_id)
         if support_request.stage not in {
             SupportRequest.Stage.AWAITING_REVIEW,
             SupportRequest.Stage.ANALYSIS_FAILED,

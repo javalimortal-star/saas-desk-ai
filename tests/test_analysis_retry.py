@@ -5,6 +5,7 @@ from django.contrib.auth.models import Permission
 from django.urls import reverse
 from django.utils import timezone
 
+import support_requests.tasks as analysis_tasks
 from support_requests.analysis import (
     AnalysisFailureCode,
     AnalysisProviderFailure,
@@ -12,7 +13,6 @@ from support_requests.analysis import (
 )
 from support_requests.models import AnalysisAttempt, AnalysisRun, SupportRequest
 from support_requests.tasks import retry_support_request_analysis
-import support_requests.tasks as analysis_tasks
 
 
 @pytest.fixture
@@ -45,9 +45,7 @@ def test_analyst_requests_a_new_analysis_with_a_persistent_idempotency_key(
     support_request.stage = initial_stage
     support_request.save(update_fields=["stage"])
     scheduled_run_ids = []
-    monkeypatch.setattr(
-        retry_support_request_analysis, "delay_on_commit", scheduled_run_ids.append
-    )
+    monkeypatch.setattr(retry_support_request_analysis, "delay_on_commit", scheduled_run_ids.append)
     client.force_login(analyst)
     idempotency_key = uuid4()
     url_name = (
@@ -73,13 +71,9 @@ def test_analyst_requests_a_new_analysis_with_a_persistent_idempotency_key(
 @pytest.mark.django_db
 def test_same_idempotency_key_schedules_only_once(client, analyst, support_request, monkeypatch):
     scheduled_run_ids = []
-    monkeypatch.setattr(
-        retry_support_request_analysis, "delay_on_commit", scheduled_run_ids.append
-    )
+    monkeypatch.setattr(retry_support_request_analysis, "delay_on_commit", scheduled_run_ids.append)
     client.force_login(analyst)
-    url = reverse(
-        "support_requests:analyst-api-retry-analysis", kwargs={"pk": support_request.pk}
-    )
+    url = reverse("support_requests:analyst-api-retry-analysis", kwargs={"pk": support_request.pk})
     data = {"idempotency_key": str(uuid4())}
 
     first = client.post(url, data, content_type="application/json")
@@ -92,9 +86,7 @@ def test_same_idempotency_key_schedules_only_once(client, analyst, support_reque
 
 
 @pytest.mark.django_db
-def test_task_redelivery_calls_provider_and_records_attempt_only_once(
-    support_request, monkeypatch
-):
+def test_task_redelivery_calls_provider_and_records_attempt_only_once(support_request, monkeypatch):
     class CountingProvider:
         calls = 0
         model = "test/model"
@@ -139,9 +131,7 @@ def test_failed_retry_records_only_a_sanitized_error(support_request, monkeypatc
         def analyze(self, request):
             raise AnalysisProviderFailure(AnalysisFailureCode.QUOTA_UNAVAILABLE)
 
-    monkeypatch.setattr(
-        analysis_tasks, "get_analysis_provider", lambda: FailingProvider()
-    )
+    monkeypatch.setattr(analysis_tasks, "get_analysis_provider", lambda: FailingProvider())
     run = AnalysisRun.objects.create(support_request=support_request)
 
     retry_support_request_analysis.run(run.pk)
@@ -214,9 +204,7 @@ def test_provider_result_does_not_overwrite_a_concurrent_resolution(
                 suggested_response="Não deve ser persistida.",
             )
 
-    monkeypatch.setattr(
-        analysis_tasks, "get_analysis_provider", lambda: ResolvingProvider()
-    )
+    monkeypatch.setattr(analysis_tasks, "get_analysis_provider", lambda: ResolvingProvider())
     run = AnalysisRun.objects.create(support_request=support_request)
 
     retry_support_request_analysis.run(run.pk)
@@ -231,9 +219,7 @@ def test_provider_result_does_not_overwrite_a_concurrent_resolution(
 
 
 @pytest.mark.django_db
-def test_retry_history_remains_visible_in_chronological_order(
-    client, analyst, support_request
-):
+def test_retry_history_remains_visible_in_chronological_order(client, analyst, support_request):
     first = AnalysisAttempt.objects.create(
         support_request=support_request,
         outcome=AnalysisAttempt.Outcome.FAILED,
@@ -273,20 +259,17 @@ def test_retry_frequency_is_limited_but_idempotent_replay_is_allowed(
 ):
     monkeypatch.setattr(retry_support_request_analysis, "delay_on_commit", lambda run_id: None)
     client.force_login(analyst)
-    url = reverse(
-        "support_requests:analyst-api-retry-analysis", kwargs={"pk": support_request.pk}
-    )
+    url = reverse("support_requests:analyst-api-retry-analysis", kwargs={"pk": support_request.pk})
     first_key = str(uuid4())
 
-    assert client.post(
-        url, {"idempotency_key": first_key}, content_type="application/json"
-    ).status_code == 202
-    limited = client.post(
-        url, {"idempotency_key": str(uuid4())}, content_type="application/json"
+    assert (
+        client.post(
+            url, {"idempotency_key": first_key}, content_type="application/json"
+        ).status_code
+        == 202
     )
-    replay = client.post(
-        url, {"idempotency_key": first_key}, content_type="application/json"
-    )
+    limited = client.post(url, {"idempotency_key": str(uuid4())}, content_type="application/json")
+    replay = client.post(url, {"idempotency_key": first_key}, content_type="application/json")
 
     assert limited.status_code == 429
     assert int(limited.headers["Retry-After"]) > 0
@@ -296,7 +279,8 @@ def test_retry_frequency_is_limited_but_idempotent_replay_is_allowed(
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "stage", [SupportRequest.Stage.RECEIVED, SupportRequest.Stage.ANALYZING, SupportRequest.Stage.RESOLVED]
+    "stage",
+    [SupportRequest.Stage.RECEIVED, SupportRequest.Stage.ANALYZING, SupportRequest.Stage.RESOLVED],
 )
 def test_retry_rejects_disallowed_stages(client, analyst, support_request, stage):
     if stage == SupportRequest.Stage.RESOLVED:
@@ -309,9 +293,7 @@ def test_retry_rejects_disallowed_stages(client, analyst, support_request, stage
     client.force_login(analyst)
 
     response = client.post(
-        reverse(
-            "support_requests:analyst-api-retry-analysis", kwargs={"pk": support_request.pk}
-        ),
+        reverse("support_requests:analyst-api-retry-analysis", kwargs={"pk": support_request.pk}),
         {"idempotency_key": str(uuid4())},
         content_type="application/json",
     )
