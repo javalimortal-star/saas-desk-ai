@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Detalhe da Solicitação</title></head>
+<body>
+  <main>
+    <p><a href="{% url 'support_requests:analyst-list' %}">Voltar para a fila</a></p>
+    <h1>{{ support_request.subject }}</h1>
+    <dl>
+      <dt>Solicitante</dt><dd>{{ support_request.requester_name }}</dd>
+      <dt>E-mail</dt><dd>{{ support_request.requester_email }}</dd>
+      <dt>Mensagem</dt><dd>{{ support_request.message }}</dd>
+      <dt>Protocolo</dt><dd>{{ support_request.protocol }}</dd>
+      <dt>Etapa</dt><dd>{{ support_request.get_stage_display }}</dd>
+    </dl>
+  </main>
+</body>
+</html>

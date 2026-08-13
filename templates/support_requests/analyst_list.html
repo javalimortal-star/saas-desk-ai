@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Fila de Solicitações</title></head>
+<body>
+  <main>
+    <h1>Fila de Solicitações</h1>
+    <form method="post" action="{% url 'support_requests:analyst-logout' %}">
+      {% csrf_token %}
+      <button type="submit">Sair</button>
+    </form>
+    <ul>
+      {% for support_request in support_requests %}
+        <li>
+          <a href="{% url 'support_requests:analyst-detail' support_request.pk %}">
+            {{ support_request.subject }}
+          </a>
+          — {{ support_request.get_stage_display }}
+        </li>
+      {% empty %}
+        <li>Nenhuma solicitação recebida.</li>
+      {% endfor %}
+    </ul>
+  </main>
+</body>
+</html>

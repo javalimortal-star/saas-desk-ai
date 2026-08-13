@@ -61,3 +61,6 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+LOGIN_URL = "support_requests:analyst-login"
+LOGIN_REDIRECT_URL = "support_requests:analyst-list"
+LOGOUT_REDIRECT_URL = "support_requests:analyst-login"

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Entrar como Analista</title></head>
+<body>
+  <main>
+    <h1>Entrar como Analista</h1>
+    {% if form.errors %}<p>Usuário ou senha inválidos.</p>{% endif %}
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit">Entrar</button>
+    </form>
+  </main>
+</body>
+</html>
