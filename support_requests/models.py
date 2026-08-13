@@ -38,7 +38,27 @@ class SupportRequest(models.Model):
     message = models.TextField(max_length=4000)
     protocol = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     stage = models.CharField(max_length=24, choices=Stage, default=Stage.RECEIVED)
+    final_category = models.CharField(max_length=32, choices=Category, blank=True)
+    final_priority = models.CharField(max_length=16, choices=Priority, blank=True)
+    approved_response = models.TextField(max_length=SUGGESTED_RESPONSE_MAX_LENGTH, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    ~models.Q(stage="resolved")
+                    | (
+                        ~models.Q(final_category="")
+                        & ~models.Q(final_priority="")
+                        & ~models.Q(approved_response="")
+                        & models.Q(resolved_at__isnull=False)
+                    )
+                ),
+                name="resolved_request_has_human_review",
+            )
+        ]
 
 
 class AnalysisAttemptManager(models.Manager):

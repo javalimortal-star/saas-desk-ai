@@ -14,3 +14,13 @@ class SupportRequestForm(forms.ModelForm):
             "message": "Mensagem",
         }
 
+
+class HumanReviewForm(forms.Form):
+    category = forms.ChoiceField(choices=SupportRequest.Category, label="Categoria")
+    priority = forms.ChoiceField(choices=SupportRequest.Priority, label="Prioridade")
+    approved_response = forms.CharField(
+        label="Resposta aprovada",
+        max_length=4000,
+        strip=True,
+        widget=forms.Textarea,
+    )

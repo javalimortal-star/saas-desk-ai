@@ -1,7 +1,9 @@
 from rest_framework import generics, permissions, serializers
+from rest_framework.response import Response
 
 from support_requests.access import is_support_request_analyst
 from support_requests.models import SupportRequest
+from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.submission import submit_support_request
 
 
@@ -57,3 +59,37 @@ class AnalystSupportRequestDetailView(generics.RetrieveAPIView):
     permission_classes = [IsSupportRequestAnalyst]
     queryset = SupportRequest.objects.all()
     serializer_class = AnalystSupportRequestSerializer
+
+
+class HumanReviewSerializer(serializers.Serializer):
+    category = serializers.ChoiceField(choices=SupportRequest.Category)
+    priority = serializers.ChoiceField(choices=SupportRequest.Priority)
+    approved_response = serializers.CharField(max_length=4000, trim_whitespace=True)
+
+
+class AnalystSupportRequestApproveView(generics.GenericAPIView):
+    permission_classes = [IsSupportRequestAnalyst]
+    queryset = SupportRequest.objects.all()
+    serializer_class = HumanReviewSerializer
+
+    def post(self, request, pk):
+        self.get_object()
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            support_request = resolve_support_request(
+                support_request_id=pk, **serializer.validated_data
+            )
+        except InvalidResolutionTransition as exc:
+            return Response({"detail": str(exc)}, status=409)
+
+        return Response(
+            {
+                "id": support_request.pk,
+                "stage": support_request.stage,
+                "category": support_request.final_category,
+                "priority": support_request.final_priority,
+                "approved_response": support_request.approved_response,
+                "resolved_at": support_request.resolved_at,
+            }
+        )

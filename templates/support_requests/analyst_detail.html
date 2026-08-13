@@ -30,6 +30,22 @@
         <p>A análise ainda não foi concluída.</p>
       {% endfor %}
     </section>
+    <section>
+      <h2>Revisão humana</h2>
+      {% if support_request.stage == "resolved" %}
+        <dl>
+          <dt>Categoria</dt><dd>{{ support_request.get_final_category_display }}</dd>
+          <dt>Prioridade</dt><dd>{{ support_request.get_final_priority_display }}</dd>
+          <dt>Resposta aprovada</dt><dd>{{ support_request.approved_response }}</dd>
+        </dl>
+      {% else %}
+        <form method="post" action="{% url 'support_requests:analyst-approve' support_request.pk %}">
+          {% csrf_token %}
+          {{ review_form.as_p }}
+          <button type="submit">Aprovar e resolver</button>
+        </form>
+      {% endif %}
+    </section>
   </main>
 </body>
 </html>

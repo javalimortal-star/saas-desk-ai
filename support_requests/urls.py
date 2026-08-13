@@ -1,6 +1,7 @@
 from django.urls import path
 
 from support_requests.api import (
+    AnalystSupportRequestApproveView as AnalystSupportRequestApiApproveView,
     AnalystSupportRequestDetailView as AnalystSupportRequestApiDetailView,
     AnalystSupportRequestListView as AnalystSupportRequestApiListView,
     PublicSupportRequestCreateView,
@@ -10,6 +11,7 @@ from support_requests.views import (
     AnalystLogoutView,
     AnalystSupportRequestDetailView,
     AnalystSupportRequestListView,
+    AnalystSupportRequestApproveView,
     SupportRequestCreateView,
     SupportRequestSubmittedView,
 )
@@ -34,6 +36,11 @@ urlpatterns = [
         AnalystSupportRequestApiDetailView.as_view(),
         name="analyst-api-detail",
     ),
+    path(
+        "api/v1/analyst/requests/<int:pk>/approve/",
+        AnalystSupportRequestApiApproveView.as_view(),
+        name="analyst-api-approve",
+    ),
     path("analyst/login/", AnalystLoginView.as_view(), name="analyst-login"),
     path("analyst/logout/", AnalystLogoutView.as_view(), name="analyst-logout"),
     path("analyst/requests/", AnalystSupportRequestListView.as_view(), name="analyst-list"),
@@ -41,5 +48,10 @@ urlpatterns = [
         "analyst/requests/<int:pk>/",
         AnalystSupportRequestDetailView.as_view(),
         name="analyst-detail",
+    ),
+    path(
+        "analyst/requests/<int:pk>/approve/",
+        AnalystSupportRequestApproveView.as_view(),
+        name="analyst-approve",
     ),
 ]

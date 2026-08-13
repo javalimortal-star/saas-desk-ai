@@ -2,13 +2,15 @@ from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMix
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, TemplateView
 
 from support_requests.access import ANALYST_PERMISSION, is_support_request_analyst
-from support_requests.forms import SupportRequestForm
-from support_requests.models import SupportRequest
+from support_requests.forms import HumanReviewForm, SupportRequestForm
+from support_requests.models import AnalysisAttempt, SupportRequest
+from support_requests.review import InvalidResolutionTransition, resolve_support_request
 from support_requests.submission import submit_support_request
 
 
@@ -66,3 +68,45 @@ class AnalystSupportRequestDetailView(AnalystPermissionRequiredMixin, DetailView
     model = SupportRequest
     template_name = "support_requests/analyst_detail.html"
     context_object_name = "support_request"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        latest_success = (
+            self.object.analysis_attempts.filter(outcome=AnalysisAttempt.Outcome.SUCCEEDED)
+            .order_by("-created_at")
+            .first()
+        )
+        initial = {}
+        if latest_success:
+            initial = {
+                "category": latest_success.recommended_category,
+                "priority": latest_success.recommended_priority,
+                "approved_response": latest_success.suggested_response,
+            }
+        context["review_form"] = HumanReviewForm(initial=initial)
+        return context
+
+
+class AnalystSupportRequestApproveView(AnalystPermissionRequiredMixin, View):
+    def post(self, request, pk):
+        support_request = get_object_or_404(SupportRequest, pk=pk)
+        form = HumanReviewForm(request.POST)
+        if not form.is_valid():
+            return render(
+                request,
+                "support_requests/analyst_detail.html",
+                {"support_request": support_request, "review_form": form},
+                status=400,
+            )
+
+        try:
+            resolve_support_request(support_request_id=pk, **form.cleaned_data)
+        except InvalidResolutionTransition as exc:
+            form.add_error(None, str(exc))
+            return render(
+                request,
+                "support_requests/analyst_detail.html",
+                {"support_request": support_request, "review_form": form},
+                status=409,
+            )
+        return redirect("support_requests:analyst-detail", pk=pk)
