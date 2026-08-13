@@ -1,11 +1,15 @@
+import uuid
+
 import pytest
 from django.urls import reverse
+
+from support_requests.models import SupportRequest
 
 
 @pytest.mark.django_db
 def test_requester_can_submit_a_request_and_receive_only_a_protocol(client):
     response = client.post(
-        reverse("requests:submit"),
+        reverse("support_requests:submit"),
         data={
             "requester_name": "Ana Silva",
             "requester_email": "ana@example.com",
@@ -15,16 +19,40 @@ def test_requester_can_submit_a_request_and_receive_only_a_protocol(client):
         follow=True,
     )
 
+    support_request = SupportRequest.objects.get()
+    content = response.content.decode()
+
     assert response.status_code == 200
-    assert "Solicitação recebida" in response.content.decode()
-    assert "ana@example.com" not in response.content.decode()
-    assert "A recuperação de senha" not in response.content.decode()
+    assert "Solicitação recebida" in content
+    assert str(support_request.protocol) in content
+    assert support_request.stage == SupportRequest.Stage.RECEIVED
+    for private_value in (
+        support_request.requester_name,
+        support_request.requester_email,
+        support_request.subject,
+        support_request.message,
+    ):
+        assert private_value not in content
+
+    another_request = SupportRequest.objects.create(
+        requester_name="Carlos Souza",
+        requester_email="carlos@example.com",
+        subject="Outro assunto privado",
+        message="Outro conteúdo privado.",
+    )
+    another_content = client.get(
+        reverse("support_requests:submitted", kwargs={"protocol": another_request.protocol})
+    ).content.decode()
+
+    assert content.replace(str(support_request.protocol), "<protocol>") == another_content.replace(
+        str(another_request.protocol), "<protocol>"
+    )
 
 
 @pytest.mark.django_db
 def test_requester_sees_clear_errors_for_invalid_form_data(client):
     response = client.post(
-        reverse("requests:submit"),
+        reverse("support_requests:submit"),
         data={
             "requester_name": "Ana Silva",
             "requester_email": "email-invalido",
@@ -38,3 +66,10 @@ def test_requester_sees_clear_errors_for_invalid_form_data(client):
     assert "Corrija os erros abaixo" in content
     assert "Insira um endereço de email válido" in content
     assert content.count("Este campo é obrigatório") >= 2
+
+
+@pytest.mark.django_db
+def test_confirmation_returns_not_found_for_an_unknown_protocol(client):
+    response = client.get(reverse("support_requests:submitted", kwargs={"protocol": uuid.uuid4()}))
+
+    assert response.status_code == 404
