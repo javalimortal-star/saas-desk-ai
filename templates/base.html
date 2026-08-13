@@ -1,0 +1,42 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="SaaS Desk AI — atendimento assistido por inteligência artificial com revisão humana.">
+  <title>{% block title %}SaaS Desk AI{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <header class="site-header">
+    <div class="shell header-inner">
+      <a class="brand" href="{% url 'support_requests:submit' %}" aria-label="SaaS Desk AI — início">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" role="img"><path d="M5 5.75A2.75 2.75 0 0 1 7.75 3h8.5A2.75 2.75 0 0 1 19 5.75v6.5A2.75 2.75 0 0 1 16.25 15H11l-4.6 3.45A.88.88 0 0 1 5 17.75V15.6a2.75 2.75 0 0 1-2-2.65v-7.2Z"/><path d="M8 8h8M8 11h5"/></svg>
+        </span>
+        <span><strong>SaaS Desk</strong><em>AI</em></span>
+      </a>
+      <nav class="header-nav" aria-label="Navegação principal">
+        {% block header_actions %}
+          <a href="{% url 'api-docs' %}">API</a>
+          <a href="https://github.com/javalimortal-star/saas-desk-ai" target="_blank" rel="noreferrer">GitHub</a>
+          <a class="button button-ghost button-small" href="{% url 'support_requests:analyst-login' %}">Área do Analista</a>
+        {% endblock %}
+      </nav>
+    </div>
+  </header>
+
+  {% block content %}{% endblock %}
+
+  <footer class="site-footer">
+    <div class="shell footer-inner">
+      <span>SaaS Desk AI</span>
+      <span>IA recomenda. Uma pessoa decide.</span>
+    </div>
+  </footer>
+</body>
+</html>

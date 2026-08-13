@@ -1,41 +1,121 @@
-<!doctype html>
-<html lang="pt-BR">
-<head><meta charset="utf-8"><title>Fila de Solicitações</title></head>
-<body>
-  <main>
-    <h1>Fila de Solicitações</h1>
+{% extends "base.html" %}
+{% block title %}Fila de Solicitações · SaaS Desk AI{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block header_actions %}
+  <div class="app-header-actions">
+    <a href="{% url 'api-docs' %}">API</a>
     <form method="post" action="{% url 'support_requests:analyst-logout' %}">
       {% csrf_token %}
-      <button type="submit">Sair</button>
+      <button class="button-danger-soft" type="submit">Sair</button>
     </form>
-    <section>
-      <h2>Totais por Etapa da Solicitação</h2>
-      <ul>
-        {% for label, total in stage_summary %}<li>{{ label }}: {{ total }}</li>{% endfor %}
-      </ul>
-      <h2>Distribuição por Categoria</h2>
-      {% if category_totals %}<ul>{% for label, total in category_summary %}<li>{{ label }}: {{ total }}</li>{% endfor %}</ul>{% else %}<p>Nenhuma classificação disponível.</p>{% endif %}
-      <h2>Distribuição por Prioridade</h2>
-      {% if priority_totals %}<ul>{% for label, total in priority_summary %}<li>{{ label }}: {{ total }}</li>{% endfor %}</ul>{% else %}<p>Nenhuma classificação disponível.</p>{% endif %}
+  </div>
+{% endblock %}
+{% block content %}
+<main class="app-main">
+  <div class="shell">
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">Painel do Analista</p>
+        <h1>Fila de Solicitações</h1>
+        <p>Acompanhe a operação e escolha o próximo caso para revisar.</p>
+      </div>
+      <a class="button button-small" href="{% url 'support_requests:submit' %}">+ Nova Solicitação</a>
+    </header>
+
+    <section aria-labelledby="stage-totals-title">
+      <h2 id="stage-totals-title" class="visually-hidden">Totais por Etapa da Solicitação</h2>
+      <div class="metrics-grid">
+        {% for label, total in stage_summary %}
+          <article class="metric-card {% if forloop.counter == 1 %}metric-received{% elif forloop.counter == 2 %}metric-analyzing{% elif forloop.counter == 3 %}metric-review{% elif forloop.counter == 4 %}metric-failed{% else %}metric-resolved{% endif %}">
+            <span>{{ label }}</span>
+            <strong>{{ total }}</strong>
+          </article>
+        {% endfor %}
+      </div>
     </section>
-    <form method="get">
-      {{ filter_form.as_p }}
-      <button type="submit">Filtrar</button>
-    </form>
-    <ul>
-      {% for support_request in support_requests %}
-        <li>
-          <a href="{% url 'support_requests:analyst-detail' support_request.pk %}">
-            {{ support_request.subject }}
+
+    <div class="dashboard-grid">
+      <section class="card">
+        <div class="card-header">
+          <h2 class="section-title">Distribuição por Categoria</h2>
+          <p class="section-copy">Classificação efetiva dos casos em atendimento.</p>
+        </div>
+        <div class="card-body">
+          {% if category_totals %}
+            <ul class="distribution-list">
+              {% for label, total in category_summary %}
+                <li class="distribution-item">
+                  <span class="visually-hidden">{{ label }}: {{ total }}</span>
+                  <span>{{ label }}</span>
+                  <span class="progress-track"><span class="progress-value" style="width: min(100%, calc({{ total }} * 16%))"></span></span>
+                  <strong>{{ total }}</strong>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}<p class="section-copy">Nenhuma classificação disponível.</p>{% endif %}
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2 class="section-title">Distribuição por Prioridade</h2>
+          <p class="section-copy">Impacto atribuído após análise ou revisão.</p>
+        </div>
+        <div class="card-body">
+          {% if priority_totals %}
+            <ul class="distribution-list">
+              {% for label, total in priority_summary %}
+                <li class="distribution-item">
+                  <span class="visually-hidden">{{ label }}: {{ total }}</span>
+                  <span>{{ label }}</span>
+                  <span class="progress-track"><span class="progress-value" style="width: min(100%, calc({{ total }} * 16%))"></span></span>
+                  <strong>{{ total }}</strong>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}<p class="section-copy">Nenhuma classificação disponível.</p>{% endif %}
+        </div>
+      </section>
+    </div>
+
+    <section class="card filters-card" aria-labelledby="filters-title">
+      <div class="card-body">
+        <h2 id="filters-title" class="section-title">Filtrar a fila</h2>
+        <form class="filter-form" method="get">
+          {{ filter_form.as_p }}
+          <button type="submit">Filtrar</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="card queue-card" aria-labelledby="queue-title">
+      <div class="card-header">
+        <h2 id="queue-title" class="section-title">Solicitações</h2>
+        <p class="section-copy">Ordenadas pelas mais recentes.</p>
+      </div>
+      <div class="queue-header" aria-hidden="true">
+        <span>Solicitação</span><span>Etapa</span><span>Categoria</span><span>Prioridade</span><span></span>
+      </div>
+      <div class="request-list">
+        {% for support_request in support_requests %}
+          <a class="request-row" href="{% url 'support_requests:analyst-detail' support_request.pk %}">
+            <span class="request-title">
+              <strong>{{ support_request.subject }}</strong>
+              <span>{{ support_request.requester_name }} · {{ support_request.created_at|date:"d/m/Y H:i" }}</span>
+            </span>
+            <span class="badge {% if support_request.stage == 'received' %}badge-neutral{% elif support_request.stage == 'analyzing' %}badge-blue{% elif support_request.stage == 'awaiting_review' %}badge-purple{% elif support_request.stage == 'analysis_failed' %}badge-red{% else %}badge-green{% endif %}">{{ support_request.get_stage_display }}</span>
+            <span>{% if support_request.effective_category_display %}<span class="badge badge-neutral">{{ support_request.effective_category_display }}</span>{% else %}<span class="section-copy">—</span>{% endif %}</span>
+            <span>{% if support_request.effective_priority_display %}<span class="badge {% if support_request.effective_priority == 'high' %}badge-red{% elif support_request.effective_priority == 'normal' %}badge-amber{% else %}badge-green{% endif %}">{{ support_request.effective_priority_display }}</span>{% else %}<span class="section-copy">—</span>{% endif %}</span>
+            <span class="row-arrow" aria-hidden="true">›</span>
           </a>
-          — {{ support_request.get_stage_display }}
-          — {{ support_request.effective_category_display }}
-          — {{ support_request.effective_priority_display }}
-        </li>
-      {% empty %}
-        <li>{% if request.GET %}Nenhuma Solicitação corresponde aos filtros.{% else %}Nenhuma Solicitação recebida.{% endif %}</li>
-      {% endfor %}
-    </ul>
-  </main>
-</body>
-</html>
+        {% empty %}
+          <div class="empty-state">
+            <strong>{% if request.GET %}Nenhuma Solicitação corresponde aos filtros.{% else %}Nenhuma Solicitação recebida.{% endif %}</strong>
+            <p>A fila será atualizada quando novos casos forem registrados.</p>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</main>
+{% endblock %}

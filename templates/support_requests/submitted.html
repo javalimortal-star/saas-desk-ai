@@ -1,10 +1,21 @@
-<!doctype html>
-<html lang="pt-BR">
-<head><meta charset="utf-8"><title>Solicitação recebida</title></head>
-<body>
-  <main>
-    <h1>Solicitação recebida</h1>
-    <p>Seu protocolo é <strong>{{ protocol }}</strong>.</p>
-  </main>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}Solicitação recebida · SaaS Desk AI{% endblock %}
+{% block content %}
+<main class="center-page">
+  <section class="card center-card success-card">
+    <div class="card-body">
+      <div class="center-icon" aria-hidden="true">✓</div>
+      <p class="eyebrow">Tudo certo</p>
+      <h1>Solicitação recebida</h1>
+      <p class="page-lead">Sua Solicitação foi registrada e seguirá para Análise assistida.</p>
+      <p>Seu protocolo é:</p>
+      <div class="protocol-box"><strong>{{ protocol }}</strong></div>
+      <p class="section-copy">Guarde esse código como confirmação do recebimento. Por segurança, ele não permite consultar dados publicamente.</p>
+      <div class="action-row" style="margin-top: 24px">
+        <a class="button" href="{% url 'support_requests:submit' %}">Criar outra Solicitação</a>
+        <a class="button button-secondary" href="{% url 'support_requests:analyst-login' %}">Área do Analista</a>
+      </div>
+    </div>
+  </section>
+</main>
+{% endblock %}

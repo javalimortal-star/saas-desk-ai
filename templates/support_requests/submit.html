@@ -1,25 +1,49 @@
-<!doctype html>
-<html lang="pt-BR">
-<head><meta charset="utf-8"><title>SaaS Desk AI</title></head>
-<body>
-  <main>
-    <h1>Como podemos ajudar?</h1>
-    <p><strong>Esta é uma demonstração:</strong> use somente dados fictícios. Não envie dados pessoais ou confidenciais.</p>
-    <form method="post">
-      {% csrf_token %}
-      {% if form.errors %}
-        <div role="alert">
-          <strong>Corrija os erros abaixo.</strong>
+{% extends "base.html" %}
+{% block title %}Solicitar atendimento · SaaS Desk AI{% endblock %}
+{% block body_class %}public-page{% endblock %}
+{% block content %}
+<main class="public-hero">
+  <div class="shell public-grid">
+    <section class="hero-copy">
+      <p class="eyebrow">Atendimento inteligente, decisão humana</p>
+      <h1>Transforme solicitações em respostas melhores.</h1>
+      <p>Uma central de atendimento demonstrativa que usa inteligência artificial para organizar cada caso — sempre com revisão de uma pessoa.</p>
+      <ul class="feature-list">
+        <li><span class="feature-check">✓</span> Classificação e prioridade assistidas por IA</li>
+        <li><span class="feature-check">✓</span> Histórico completo de cada tentativa</li>
+        <li><span class="feature-check">✓</span> Aprovação final obrigatoriamente humana</li>
+      </ul>
+    </section>
+
+    <section class="card request-card" aria-labelledby="request-title">
+      <div class="card-header">
+        <p class="eyebrow">Nova Solicitação</p>
+        <h2 id="request-title">Como podemos ajudar?</h2>
+        <p class="section-copy">Preencha os dados abaixo para receber seu Protocolo.</p>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info demo-note">
+          <span class="alert-icon" aria-hidden="true">i</span>
+          <p><strong>Esta é uma demonstração:</strong> use somente dados fictícios. Não envie dados pessoais ou confidenciais.</p>
         </div>
-      {% endif %}
-      {{ form.as_p }}
-      <button type="submit">Enviar solicitação</button>
-    </form>
-    <nav aria-label="Links da demonstração">
-      <a href="{% url 'support_requests:analyst-login' %}">Entrar como Analista</a>
-      <a href="{% url 'api-docs' %}">Documentação da API</a>
-      <a href="https://github.com/javalimortal-star/saas-desk-ai">Código-fonte</a>
-    </nav>
-  </main>
-</body>
-</html>
+        <form method="post">
+          {% csrf_token %}
+          {% if form.errors %}
+            <div class="alert alert-error" role="alert">
+              <span class="alert-icon" aria-hidden="true">!</span>
+              <strong>Corrija os erros abaixo.</strong>
+            </div>
+          {% endif %}
+          {{ form.as_p }}
+          <button type="submit">Enviar solicitação <span aria-hidden="true">→</span></button>
+        </form>
+        <nav class="demo-links" aria-label="Links da demonstração">
+          <a href="{% url 'support_requests:analyst-login' %}">Entrar como Analista</a>
+          <a href="{% url 'api-docs' %}">Documentação da API</a>
+          <a href="https://github.com/javalimortal-star/saas-desk-ai">Código-fonte</a>
+        </nav>
+      </div>
+    </section>
+  </div>
+</main>
+{% endblock %}

@@ -1,61 +1,130 @@
-<!doctype html>
-<html lang="pt-BR">
-<head><meta charset="utf-8"><title>Detalhe da Solicitação</title></head>
-<body>
-  <main>
-    <p><a href="{% url 'support_requests:analyst-list' %}">Voltar para a fila</a></p>
-    <h1>{{ support_request.subject }}</h1>
-    <dl>
-      <dt>Solicitante</dt><dd>{{ support_request.requester_name }}</dd>
-      <dt>E-mail</dt><dd>{{ support_request.requester_email }}</dd>
-      <dt>Mensagem</dt><dd>{{ support_request.message }}</dd>
-      <dt>Protocolo</dt><dd>{{ support_request.protocol }}</dd>
-      <dt>Etapa</dt><dd>{{ support_request.get_stage_display }}</dd>
-    </dl>
-    <section>
-      <h2>Análise assistida</h2>
-      {% for attempt in support_request.analysis_attempts.all %}
-        {% if attempt.outcome == "failed" %}
-          <p><strong>Falha na análise:</strong> {{ attempt.sanitized_error }}</p>
-        {% else %}
-          <dl>
-            <dt>Resumo</dt><dd>{{ attempt.summary }}</dd>
-            <dt>Categoria recomendada</dt><dd>{{ attempt.get_recommended_category_display }}</dd>
-            <dt>Prioridade recomendada</dt><dd>{{ attempt.get_recommended_priority_display }}</dd>
-            <dt>Resposta sugerida</dt><dd>{{ attempt.suggested_response }}</dd>
-            <dt>Modelo</dt><dd>{{ attempt.provider_model }}</dd>
-          </dl>
+{% extends "base.html" %}
+{% block title %}{{ support_request.subject }} · SaaS Desk AI{% endblock %}
+{% block body_class %}app-page{% endblock %}
+{% block header_actions %}
+  <div class="app-header-actions">
+    <a href="{% url 'support_requests:analyst-list' %}">Fila</a>
+    <form method="post" action="{% url 'support_requests:analyst-logout' %}">
+      {% csrf_token %}
+      <button class="button-danger-soft" type="submit">Sair</button>
+    </form>
+  </div>
+{% endblock %}
+{% block content %}
+<main class="app-main">
+  <div class="shell">
+    <a class="back-link" href="{% url 'support_requests:analyst-list' %}"><span aria-hidden="true">←</span> Voltar para a fila</a>
+    <header class="page-heading detail-heading">
+      <div>
+        <p class="eyebrow">Detalhe da Solicitação</p>
+        <h1>{{ support_request.subject }}</h1>
+        <p>Protocolo {{ support_request.protocol }}</p>
+      </div>
+      <span class="badge {% if support_request.stage == 'received' %}badge-neutral{% elif support_request.stage == 'analyzing' %}badge-blue{% elif support_request.stage == 'awaiting_review' %}badge-purple{% elif support_request.stage == 'analysis_failed' %}badge-red{% else %}badge-green{% endif %}">{{ support_request.get_stage_display }}</span>
+    </header>
+
+    <div class="detail-layout">
+      <div class="detail-stack">
+        <section class="card">
+          <div class="card-header">
+            <h2 class="section-title">Solicitação original</h2>
+            <p class="section-copy">Informações enviadas pelo Solicitante.</p>
+          </div>
+          <div class="card-body">
+            <dl class="request-meta">
+              <div><dt>Solicitante</dt><dd>{{ support_request.requester_name }}</dd></div>
+              <div><dt>E-mail</dt><dd>{{ support_request.requester_email }}</dd></div>
+              <div class="meta-wide"><dt>Mensagem</dt><dd class="message-box">{{ support_request.message }}</dd></div>
+              <div><dt>Protocolo</dt><dd>{{ support_request.protocol }}</dd></div>
+              <div><dt>Etapa da Solicitação</dt><dd>{{ support_request.get_stage_display }}</dd></div>
+            </dl>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <h2 class="section-title">Análise assistida</h2>
+            <p class="section-copy">Recomendações da IA preservadas para comparação e histórico.</p>
+          </div>
+          <div class="card-body">
+            {% for attempt in support_request.analysis_attempts.all %}
+              {% if attempt.outcome == "failed" %}
+                <article class="attempt attempt-failed">
+                  <div class="attempt-top">
+                    <span class="badge badge-red">Falha na análise</span>
+                    <span class="section-copy">Tentativa {{ forloop.counter }}</span>
+                  </div>
+                  <div class="alert alert-error">
+                    <span class="alert-icon" aria-hidden="true">!</span>
+                    <p><strong>Falha na análise:</strong> {{ attempt.sanitized_error }}</p>
+                  </div>
+                </article>
+              {% else %}
+                <article class="attempt">
+                  <div class="attempt-top">
+                    <span class="badge badge-green">Análise concluída</span>
+                    <span class="section-copy">Tentativa {{ forloop.counter }}</span>
+                  </div>
+                  <dl class="analysis-grid">
+                    <div class="analysis-wide"><dt>Resumo</dt><dd>{{ attempt.summary }}</dd></div>
+                    <div><dt>Categoria recomendada</dt><dd><span class="badge badge-neutral">{{ attempt.get_recommended_category_display }}</span></dd></div>
+                    <div><dt>Prioridade recomendada</dt><dd><span class="badge {% if attempt.recommended_priority == 'high' %}badge-red{% elif attempt.recommended_priority == 'normal' %}badge-amber{% else %}badge-green{% endif %}">{{ attempt.get_recommended_priority_display }}</span></dd></div>
+                    <div class="analysis-wide"><dt>Resposta sugerida</dt><dd class="suggested-response">{{ attempt.suggested_response }}</dd></div>
+                    <div><dt>Modelo</dt><dd>{{ attempt.provider_model }}</dd></div>
+                    <div><dt>Processamento</dt><dd>{% if attempt.duration_ms %}{{ attempt.duration_ms }} ms{% else %}—{% endif %}</dd></div>
+                  </dl>
+                </article>
+              {% endif %}
+            {% empty %}
+              <div class="empty-state">
+                <strong>A análise ainda não foi concluída.</strong>
+                <p>O histórico aparecerá aqui após o processamento.</p>
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        {% if support_request.stage == "awaiting_review" or support_request.stage == "analysis_failed" %}
+          <section class="retry-box">
+            <h2 class="section-title">Nova Tentativa de análise</h2>
+            <p>Use uma nova tentativa se a recomendação estiver incompleta ou se o provedor tiver falhado.</p>
+            <form method="post" action="{% url 'support_requests:analyst-retry-analysis' support_request.pk %}">
+              {% csrf_token %}
+              {{ analysis_retry_form }}
+              <button type="submit">Solicitar nova análise</button>
+            </form>
+          </section>
         {% endif %}
-      {% empty %}
-        <p>A análise ainda não foi concluída.</p>
-      {% endfor %}
-    </section>
-    {% if support_request.stage == "awaiting_review" or support_request.stage == "analysis_failed" %}
-      <section>
-        <h2>Nova Tentativa de análise</h2>
-        <form method="post" action="{% url 'support_requests:analyst-retry-analysis' support_request.pk %}">
-          {% csrf_token %}
-          {{ analysis_retry_form.as_p }}
-          <button type="submit">Solicitar nova análise</button>
-        </form>
-      </section>
-    {% endif %}
-    <section>
-      <h2>Revisão humana</h2>
-      {% if support_request.stage == "resolved" %}
-        <dl>
-          <dt>Categoria</dt><dd>{{ support_request.get_final_category_display }}</dd>
-          <dt>Prioridade</dt><dd>{{ support_request.get_final_priority_display }}</dd>
-          <dt>Resposta aprovada</dt><dd>{{ support_request.approved_response }}</dd>
-        </dl>
-      {% else %}
-        <form method="post" action="{% url 'support_requests:analyst-approve' support_request.pk %}">
-          {% csrf_token %}
-          {{ review_form.as_p }}
-          <button type="submit">Aprovar e resolver</button>
-        </form>
-      {% endif %}
-    </section>
-  </main>
-</body>
-</html>
+      </div>
+
+      <aside class="card review-card">
+        <div class="card-header">
+          <p class="eyebrow">Decisão final</p>
+          <h2 class="section-title">Revisão humana</h2>
+          <p class="section-copy">A IA recomenda. Você decide o que será aprovado.</p>
+        </div>
+        <div class="card-body">
+          {% if support_request.stage == "resolved" %}
+            <div class="alert alert-success" style="margin-bottom: 20px">
+              <span class="alert-icon" aria-hidden="true">✓</span>
+              <p><strong>Solicitação resolvida.</strong><br>A decisão humana foi registrada.</p>
+            </div>
+            <dl class="resolution-grid">
+              <div><dt>Categoria</dt><dd><span class="badge badge-neutral">{{ support_request.get_final_category_display }}</span></dd></div>
+              <div><dt>Prioridade</dt><dd><span class="badge {% if support_request.final_priority == 'high' %}badge-red{% elif support_request.final_priority == 'normal' %}badge-amber{% else %}badge-green{% endif %}">{{ support_request.get_final_priority_display }}</span></dd></div>
+              <div><dt>Resposta aprovada</dt><dd class="approved-response">{{ support_request.approved_response }}</dd></div>
+            </dl>
+          {% else %}
+            <p class="human-note">Revise os campos abaixo. A Resolução só acontece após sua aprovação.</p>
+            <form method="post" action="{% url 'support_requests:analyst-approve' support_request.pk %}">
+              {% csrf_token %}
+              {{ review_form.as_p }}
+              <button type="submit">Aprovar e resolver <span aria-hidden="true">✓</span></button>
+            </form>
+          {% endif %}
+        </div>
+      </aside>
+    </div>
+  </div>
+</main>
+{% endblock %}
