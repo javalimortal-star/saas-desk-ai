@@ -105,6 +105,14 @@ class AnalystSupportRequestListView(AnalystPermissionRequiredMixin, ListView):
             ],
             category_totals=category_totals,
             priority_totals=priority_totals,
+            category_summary=[
+                (label, category_totals.get(value, 0))
+                for value, label in SupportRequest.Category.choices
+            ],
+            priority_summary=[
+                (label, priority_totals.get(value, 0))
+                for value, label in SupportRequest.Priority.choices
+            ],
         )
         return context
 

@@ -14,9 +14,9 @@
         {% for label, total in stage_summary %}<li>{{ label }}: {{ total }}</li>{% endfor %}
       </ul>
       <h2>Distribuição por Categoria</h2>
-      {% if category_totals %}<ul>{% for value, total in category_totals.items %}<li>{{ value }}: {{ total }}</li>{% endfor %}</ul>{% else %}<p>Nenhuma classificação disponível.</p>{% endif %}
+      {% if category_totals %}<ul>{% for label, total in category_summary %}<li>{{ label }}: {{ total }}</li>{% endfor %}</ul>{% else %}<p>Nenhuma classificação disponível.</p>{% endif %}
       <h2>Distribuição por Prioridade</h2>
-      {% if priority_totals %}<ul>{% for value, total in priority_totals.items %}<li>{{ value }}: {{ total }}</li>{% endfor %}</ul>{% else %}<p>Nenhuma classificação disponível.</p>{% endif %}
+      {% if priority_totals %}<ul>{% for label, total in priority_summary %}<li>{{ label }}: {{ total }}</li>{% endfor %}</ul>{% else %}<p>Nenhuma classificação disponível.</p>{% endif %}
     </section>
     <form method="get">
       {{ filter_form.as_p }}

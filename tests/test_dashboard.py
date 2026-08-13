@@ -90,6 +90,10 @@ def test_dashboard_shows_stage_totals_and_effective_distributions(
     assert response.context["category_totals"] == {"access": 1, "billing": 1}
     assert response.context["priority_totals"] == {"high": 1, "low": 1}
     assert "Nenhuma classificação disponível" not in content
+    assert "Acesso: 1" in content
+    assert "Cobrança: 1" in content
+    assert "Alta: 1" in content
+    assert "Baixa: 1" in content
 
 
 @pytest.mark.django_db
@@ -124,6 +128,10 @@ def test_dashboard_filters_can_be_combined_and_use_final_values(
         }
     else:
         assert [item["subject"] for item in response.json()] == ["resolved"]
+        assert response.json()[0]["effective_category"] == SupportRequest.Category.BILLING
+        assert response.json()[0]["effective_category_label"] == "Cobrança"
+        assert response.json()[0]["effective_priority"] == SupportRequest.Priority.LOW
+        assert response.json()[0]["effective_priority_label"] == "Baixa"
 
 
 @pytest.mark.django_db

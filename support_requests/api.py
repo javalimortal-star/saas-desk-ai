@@ -80,6 +80,27 @@ class AnalystSupportRequestSerializer(serializers.ModelSerializer):
         )
 
 
+class AnalystSupportRequestListSerializer(AnalystSupportRequestSerializer):
+    effective_category = serializers.CharField(read_only=True, allow_null=True)
+    effective_category_label = serializers.SerializerMethodField()
+    effective_priority = serializers.CharField(read_only=True, allow_null=True)
+    effective_priority_label = serializers.SerializerMethodField()
+
+    class Meta(AnalystSupportRequestSerializer.Meta):
+        fields = AnalystSupportRequestSerializer.Meta.fields + (
+            "effective_category",
+            "effective_category_label",
+            "effective_priority",
+            "effective_priority_label",
+        )
+
+    def get_effective_category_label(self, obj):
+        return obj.effective_category_display
+
+    def get_effective_priority_label(self, obj):
+        return obj.effective_priority_display
+
+
 class AnalysisAttemptSerializer(serializers.ModelSerializer):
     class Meta:
         model = AnalysisAttempt
@@ -108,7 +129,7 @@ class AnalystSupportRequestDetailSerializer(AnalystSupportRequestSerializer):
 
 class AnalystSupportRequestListView(generics.ListAPIView):
     permission_classes = [IsSupportRequestAnalyst]
-    serializer_class = AnalystSupportRequestSerializer
+    serializer_class = AnalystSupportRequestListSerializer
 
     def get_queryset(self):
         form = DashboardFilterForm(self.request.query_params)

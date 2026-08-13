@@ -99,6 +99,10 @@ def test_analyst_can_list_and_detail_requests_through_the_api(client, analyst, s
     assert list_response.status_code == 200
     list_payload = list_response.json()
     created_at = parse_datetime(list_payload[0].pop("created_at"))
+    assert list_payload[0].pop("effective_category") is None
+    assert list_payload[0].pop("effective_category_label") == "—"
+    assert list_payload[0].pop("effective_priority") is None
+    assert list_payload[0].pop("effective_priority_label") == "—"
     assert list_payload == [{
         "id": support_request.pk,
         "protocol": str(support_request.protocol),
